@@ -13,7 +13,7 @@ public class HealthController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("application", "FluxLoad");
-        response.put("version", "1.1.0");
+        response.put("version", "2.0.0");
         response.put("timestamp", System.currentTimeMillis());
         return response;
     }
@@ -22,7 +22,7 @@ public class HealthController {
     public Map<String, Object> apiInfo() {
         Map<String, Object> response = new HashMap<>();
         response.put("application", "FluxLoad");
-        response.put("version", "1.1.0");
+        response.put("version", "2.0.0");
         response.put("description", "A modern file sharing server with upload capabilities");
         response.put("endpoints", Map.of(
             "browse", "/browse",

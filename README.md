@@ -72,10 +72,10 @@ mvn clean package -DskipTests
 
 ```bash
 # Run executable JAR
-java -jar target/fluxload-1.1.0.jar -d /path/to/share -p 8080
+java -jar target/fluxload-2.0.0.jar -d /path/to/share -p 8080
 
 # Run with password protection
-java -jar target/fluxload-1.1.0.jar -d /path/to/share -p 8080 --password mysecret
+java -jar target/fluxload-2.0.0.jar -d /path/to/share -p 8080 --password mysecret
 ```
 
 ### CLI Arguments
