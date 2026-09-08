@@ -25,6 +25,7 @@ FluxLoad operates across two specialized branches designed for distinct deployme
 | **Docker Base** | `eclipse-temurin:17-jre-alpine` | `python:3.12-slim` |
 | **UI & Theme Engine** | Unified File Explorer (15 Developer Themes) | Unified File Explorer (15 Developer Themes) |
 | **REST API Contract** | Parity (`/api/files`, `/health`) | Parity (`/api/files`, `/health`) |
+| **Distribution** | Standalone JAR / Docker / GitHub Releases | [PyPI (`pip install fluxload`)](https://pypi.org/project/fluxload/) / Docker |
 
 ### Branch Navigation
 
@@ -56,7 +57,21 @@ git checkout python
 
 ## Quick Start
 
-### Build from Source
+### Installation & Execution
+
+#### Option A: Run Pre-built Standalone JAR (Recommended)
+
+Download `fluxload-2.0.0.jar` directly from the [GitHub Releases](https://github.com/muadzhdz/fluxload/releases/tag/v2.0.0) page:
+
+```bash
+# Run standalone executable JAR
+java -jar fluxload-2.0.0.jar -d /path/to/share -p 8080
+
+# Run with password protection
+java -jar fluxload-2.0.0.jar -d /path/to/share -p 8080 --password mysecret
+```
+
+#### Option B: Build from Source
 
 ```bash
 # Clone the repository
@@ -66,18 +81,10 @@ git checkout java
 
 # Build executable JAR with Maven
 mvn clean package -DskipTests
-```
 
-### Running the Application
-
-```bash
-# Run executable JAR
+# Run compiled JAR
 java -jar target/fluxload-2.0.0.jar -d /path/to/share -p 8080
-
-# Run with password protection
-java -jar target/fluxload-2.0.0.jar -d /path/to/share -p 8080 --password mysecret
 ```
-
 ### CLI Arguments
 
 | Flag | Description | Default |
