@@ -10,7 +10,7 @@ COPY pyproject.toml setup.py README.md ./
 COPY fluxload ./fluxload
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels .
+    && pip wheel --no-cache-dir --wheel-dir /app/wheels .
 
 FROM python:3.12-slim
 
