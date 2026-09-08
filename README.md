@@ -13,12 +13,32 @@ High-performance, type-safe file sharing server powered by Spring Boot 3 and Jav
 
 ## Architectural Overview
 
-FluxLoad is designed with a dual-engine philosophy:
+FluxLoad operates across two specialized branches designed for distinct deployment needs:
 
-- **Java Branch (`java`):** Built on Spring Boot 3, Spring Security, and Thymeleaf, providing enterprise-grade reliability, memory efficiency, and strong type safety.
-- **Python Branch (`python`):** Built on Flask and Werkzeug, providing rapid scripting, standalone portability, and full-text search.
+| Specification | Java Engine (`java`) | Python Engine (`python`) |
+| :--- | :--- | :--- |
+| **Primary Framework** | Spring Boot 3.3 (Java 17+) | Flask 3.0 + Werkzeug |
+| **Best Used For** | High-throughput enterprise workloads, strict typing | Rapid local deployment, scriptability, full-text search |
+| **Security Layer** | Spring Security + BCryptPasswordEncoder | Werkzeug secure hashing + Session auth |
+| **Advanced Features** | Multi-threaded async service, Enterprise JPA ready | Whoosh indexing, SQLite/SQLAlchemy, WebSockets |
+| **Default Port** | `8080` (standalone & Docker) | `8000` (standalone) / `5000` (Docker) |
+| **Docker Base** | `eclipse-temurin:17-jre-alpine` | `python:3.12-slim` |
+| **UI & Theme Engine** | Unified File Explorer (15 Developer Themes) | Unified File Explorer (15 Developer Themes) |
+| **REST API Contract** | Parity (`/api/files`, `/health`) | Parity (`/api/files`, `/health`) |
 
-Both branches feature the exact same modern minimalist UI design tokens, breadcrumb navigation, and unified REST API contract (`/api/files`, `/health`).
+### Branch Navigation
+
+```bash
+# Clone the repository
+git clone https://github.com/muadzhdz/fluxload.git
+cd fluxload
+
+# Switch to the Java engine (current branch)
+git checkout java
+
+# Switch to the Python engine
+git checkout python
+```
 
 ---
 
@@ -127,6 +147,15 @@ make clean
 ## Zero-Emoji & Clean Design Policy
 
 FluxLoad enforces a strict **Zero-Emoji policy** across all branches. User interfaces utilize Google Material Icons exclusively, and terminal outputs rely on clean, deterministic ASCII tags (`[*]`, `[+]`, `[!]`, `[ERROR]`). Automated CI pipelines verify zero emoji violations on every commit and pull request.
+
+---
+
+## Contributing
+
+1. Review the engineering standards outlined in the [Pull Request Template](.github/pull_request_template.md).
+2. Ensure all unit tests pass (`make test`).
+3. Ensure zero emoji characters exist anywhere in code, markdown, or commits.
+4. Submit PR targeting either `java` or `python` branch.
 
 ---
 
