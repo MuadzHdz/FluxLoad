@@ -1,0 +1,91 @@
+name: Release & Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate-and-test:
+    name: Verify Tests & Zero-Emoji
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Verify Zero-Emoji Compliance
+      run: |
+        python3 -c "
+        import os, sys, unicodedata
+        violations = []
+        exclude_dirs = {'.git', '.venv', '__pycache__', 'venv', 'build', 'dist'}
+        for root, dirs, files in os.walk('.'):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            for file in files:
+                if file.endswith(('.png', '.jpg', '.ico', '.whl', '.tar.gz')):
+                    continue
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        for line_no, line in enumerate(f, 1):
+                            for char in line:
+                                cp = ord(char)
+                                if (0x1F300 <= cp <= 0x1FAFF) or (0x2600 <= cp <= 0x27BF) or (0xFE00 <= cp <= 0xFE0F):
+                                    violations.append((filepath, line_no, char, hex(cp)))
+                except Exception:
+                    pass
+        if violations:
+            print(f'Found {len(violations)} emoji violations:')
+            for v in violations:
+                print(f'{v[0]}:{v[1]}: char {v[2]} (U+{v[3][2:].upper()})')
+            sys.exit(1)
+        print('Zero-Emoji compliance verified: 0 violations found.')
+        "
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[test]" pytest pytest-cov pytest-flask
+
+    - name: Run Pytest suite
+      run: pytest tests/
+
+  publish-pypi:
+    name: Build & Publish to PyPI
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install build tools
+      run: pip install --upgrade pip build twine
+
+    - name: Build sdist and wheel
+      run: python -m build
+
+    - name: Verify distribution artifacts
+      run: twine check dist/*
+
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
+        generate_release_notes: true
