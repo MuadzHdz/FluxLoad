@@ -1,1 +1,39 @@
-LS0tCm5hbWU6IEJ1ZyByZXBvcnQKZGVzY3JpcHRpb246IENyZWF0ZSBhIHJlcG9ydCB0byBoZWxwIHVzIGltcHJvdmUKdGl0bGU6ICdbQlVHXSAnCmxhYmVsczogYnVnCmFzc2lnbmVlczogJycKLS0tCgojIyBEZXNjcmlwdGlvbgoKQSBjbGVhciBhbmQgY29uY2lzZSBkZXNjcmlwdGlvbiBvZiB3aGF0IHRoZSBidWcgaXMuCgojIyBUbyBSZXByb2R1Y2UKCjEuIEdvIHRvICcuLi4nCjIuIENsaWNrIG9uICcuLi4nCjMuIFNjcm9sbCBkb3duIHRvICcuLi4nCjQuIFNlZSBlcnJvcgoKIyMgRXhwZWN0ZWQgQmVoYXZpb3IKCkEgY2xlYXIgZGVzY3JpcHRpb24gb2Ygd2hhdCB5b3UgZXhwZWN0ZWQgdG8gaGFwcGVuLgoKIyMgQWN0dWFsIEJlaGF2aW9yCgpBIYGNsZWFyIGRlc2NyaXB0aW9uIG9mIHdoYXQgYWN0dWFsbHkgaGFwcGVuZWQuCgojIyBTY3JlZW5zaG90cwoKSWYgYXBwbGljYWJsZSwgYWRkIHNjcmVlbnNob3RzIHRvIGhlbHAgZXhwbGFpbiB5b3VyIHByb2JsZW0uCgojIyBFbnZpcm9ubWVudAoKLSBPUzogW2UuZy4gaU9TLzE2LjFdCi0gQnJvd3NlcjogW2UuZy4gY2hyb21lLzk3XQotIFZlcnNpb246IFtlLmcuIHYyLjAuMF0KCiMjIEFkZGl0aW9uYWwgQ29udGV4dAoKQWRkIGFueSBvdGhlciBjb250ZXh0IGFib3V0IHRoZSBwcm9ibGVtIGhlcmUuCg==
+---
+name: Bug Report
+description: Report a defect, error, or unexpected behavior in FluxLoad
+title: "fix: "
+labels: ["bug"]
+assignees: ""
+---
+
+## Description
+A clear and concise description of the bug.
+
+## Target Engine / Branch
+- [ ] Python (`python` branch - Flask engine)
+- [ ] Java (`java` branch - Spring Boot engine)
+
+## Steps to Reproduce
+1. Start the server with command: `...`
+2. Perform request or UI action: `...`
+3. Observe the response: `...`
+
+## Expected Behavior
+A concise description of what should occur under normal operation.
+
+## Actual Behavior
+A concise description of what actually happened, including error messages or status codes.
+
+## Terminal Output / Stack Trace
+```text
+<!-- Paste full stack trace or logs here -->
+```
+
+## Environment
+- OS: [e.g. Linux Ubuntu 24.04, macOS Sonoma, Windows 11]
+- Runtime: [e.g. Python 3.12, OpenJDK 17]
+- FluxLoad Version: [e.g. 1.2.9 / 1.1.0]
+- Browser (if UI issue): [e.g. Chrome 124, Firefox 125]
+
+## Additional Context
+Add any other context, configuration options, or flags used.

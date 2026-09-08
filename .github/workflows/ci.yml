@@ -1,4 +1,4 @@
-name: Python CI
+name: FluxLoad Python CI/CD
 
 on:
   push:
@@ -6,10 +6,57 @@ on:
   pull_request:
     branches: [ python, main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint-and-compliance:
+    name: Code Quality & Zero-Emoji Compliance
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Verify Zero-Emoji Compliance
+      run: |
+        python3 -c "
+        import os, sys, re
+        emoji_pattern = re.compile(r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50]')
+        violations = 0
+        for root, dirs, files in os.walk('.'):
+            if '.git' in dirs: dirs.remove('.git')
+            if '__pycache__' in dirs: dirs.remove('__pycache__')
+            if '.pytest_cache' in dirs: dirs.remove('.pytest_cache')
+            for f in files:
+                if f.endswith(('.py', '.html', '.js', '.css', '.md', '.json', '.yml', '.yaml')):
+                    p = os.path.join(root, f)
+                    with open(p, 'r', errors='ignore') as fh:
+                        for idx, line in enumerate(fh, 1):
+                            m = emoji_pattern.search(line)
+                            if m:
+                                print(f'Zero-Emoji violation at {p}:{idx} -> {m.group()}')
+                                violations += 1
+        if violations > 0:
+            print(f'ERROR: Found {violations} emoji violations. Zero-Emoji policy strictly enforced.')
+            sys.exit(1)
+        print('Zero-Emoji compliance verified: 0 violations found.')
+        "
+
+    - name: Python Syntax & Bytecode Compilation Check
+      run: |
+        python3 -m compileall fluxload tests
+
   test:
+    name: Test Suite (Python ${{ matrix.python-version }})
+    needs: lint-and-compliance
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
 
@@ -20,6 +67,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -29,4 +77,30 @@ jobs:
 
     - name: Run test suite with coverage
       run: |
-        pytest -v --cov=fluxload --cov-report=term-missing
+        pytest -v --cov=fluxload --cov-report=term-missing --cov-report=xml
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v4
+      if: matrix.python-version == '3.12'
+      with:
+        name: coverage-report
+        path: coverage.xml
+
+  docker-smoke-test:
+    name: Docker Build & Health Smoke Test
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t fluxload:python-ci .
+
+    - name: Run container & verify /health endpoint
+      run: |
+        mkdir -p /tmp/fluxload-test-data
+        docker run -d --name fluxload-test -p 5000:5000 -v /tmp/fluxload-test-data:/data fluxload:python-ci
+        sleep 3
+        curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:5000/health || exit 1
+        docker stop fluxload-test
+        docker rm fluxload-test

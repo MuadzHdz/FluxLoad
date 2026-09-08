@@ -1,1 +1,28 @@
-LS0tCm5hbWU6IEZlYXR1cmUgcmVxdWVzdApkZXNjcmlwdGlvbjogU3VnZ2VzdCBhbiBpZGVhIGZvciB0aGlzIHByb2plY3QKdGl0bGU6ICdbRkVBVFVSRV0gJwpsYWJlbHM6IGVuaGFuY2VtZW50CmFzc2lnbmVlczogJycKLS0tCgojIyBGZWF0dXJlIERlc2NyaXB0aW9uCgpBIyBjbGVhciBhbmQgY29uY2lzZSBkZXNjcmlwdGlvbiBvZiB3aGF0IHlvdSB3YW50IHRvIGhhcHBlbi4KCiMjIFByb2JsZW0vVXNlIENhc2UKCkRlc2NyaWJlIHRoZSBwcm9ibGVtIHlvdSdyZSB0cnlpbmcgdG8gc29sdmUgb3IgdGhlIHVzZSBjYXNlIHlvdSd0ZSB0cnlpbmcgdG8gZW5hYmxlLgoKIyMgUHJvcG9zZWQgU29sdXRpb24KCkRlc2NyaWJlIHRoZSBzb2x1dGlvbiB5b3UncmUgcHJvcG9zaW5nLgoKIyMgQWx0ZXJuYXRpdmVzCgpEZXNjcmliZSBhbnkgYWsdGVybmF0aXZlIHNvbHV0aW9ucyBvciBmZWF0dXJlcyB5b3UndmUgY29uc2lkZXJlZC4KCiMjIEFkZGl0aW9uYWwgQ29udGV4dAoKQWRkIGFueSBvdGhlciBjb250ZXh0IG9yIHNjcmVlbnNob3RzIGFib3V0IHRoZSBmZWF0dXJlIHJlcXVlc3QgaGVyZS4K
+---
+name: Feature Request
+description: Propose a new feature, improvement, or architectural enhancement
+title: "feat: "
+labels: ["enhancement"]
+assignees: ""
+---
+
+## Summary & Problem Statement
+Is your feature proposal related to a problem or limitation? Please describe.
+
+## Target Engine / Branch
+- [ ] Python (`python` branch - Flask engine)
+- [ ] Java (`java` branch - Spring Boot engine)
+- [ ] Both engines (cross-branch parity)
+
+## Proposed Solution
+A clear description of what you want to happen and how it should work.
+
+## Alternative Solutions Considered
+Describe any alternative solutions, libraries, or architectural approaches considered.
+
+## Acceptance Criteria
+- [ ] Specific requirement 1
+- [ ] Specific requirement 2
+
+## Additional Context
+Add any sketches, references, or API contract examples.

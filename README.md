@@ -1,94 +1,121 @@
-<div align="center">
+# FluxLoad
 
-# FluxLoad (Python Version)
+High-performance, minimalist file sharing server engineered with strict security boundaries, clean aesthetics, and dual-engine architecture (Python & Java).
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python)
-![Flask](https://img.shields.io/badge/Flask-3.0+-lightgrey.svg?style=for-the-badge&logo=flask)
-![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)
+[![Python CI](https://github.com/muadzhdz/fluxload/actions/workflows/ci.yml/badge.svg?branch=python)](https://github.com/muadzhdz/fluxload/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://python.org)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
+[![Policy](https://img.shields.io/badge/Policy-Zero--Emoji-success)](#zero-emoji--clean-design-policy)
 
-</div>
+---
 
-A modern file sharing server with two modes: a simple single-user server and an advanced multi-user enterprise server.
+## Architectural Overview
+
+FluxLoad operates across two specialized branches:
+
+- **Python Branch (`python`):** Powered by Flask and Werkzeug, providing both a lightweight standalone file server and an advanced enterprise edition with SQLite/SQLAlchemy, Whoosh full-text search indexing, and real-time WebSockets.
+- **Java Branch (`java`):** Powered by Spring Boot 3 and Java 17+, delivering robust, type-safe enterprise file management with Spring Security and matching REST endpoints.
+
+Both branches share identical UI design tokens, breadcrumb navigation, and REST API contracts (`/api/files`, `/health`).
+
+---
+
+## Key Features
+
+- **Unified File Explorer:** Single-view table explorer with top navigation bar, dynamic breadcrumbs, and instant client-side file search.
+- **Whole-Page Drag-and-Drop:** Drop files anywhere on the browser window to trigger instant uploads.
+- **Floating Upload Toast:** Non-intrusive bottom-right progress monitor with real-time percentage, transfer stats, and cancel support.
+- **Rigorous Path Traversal Protection:** Component-based path resolution (`os.path.commonpath`) eliminating directory traversal and sibling directory attacks.
+- **Root Directory Protection:** Safeguards preventing accidental or malicious deletion of the root upload directory.
+- **REST API Parity:** Unified `/api/files` endpoints enabling any frontend, script, or mobile client to interface interchangeably with Python or Java backends.
+- **15 Built-in Developer Themes:** Tokyo Night, Catppuccin (Mocha, Macchiato, Frappe, Latte), Rose Pine, Nord, Dracula, Gruvbox, and more.
 
 ---
 
 ## Quick Start
 
-### Install from PyPI (Recommended)
+### Installation
 
 ```bash
-pip install fluxload
-```
-
-### Or from source
-
-```bash
+# Clone the repository
 git clone https://github.com/muadzhdz/fluxload.git
 cd fluxload
-pip install -r requirements.txt
+
+# Install in editable mode
+pip install -e .
 ```
 
-### Basic Mode (Simple file sharing)
+### Running the Server
 
 ```bash
+# 1. Simple file server
+fluxload-simple -d /path/to/share -p 5000
+
+# Or via Python module directly:
 python -m fluxload -d /path/to/share
-```
 
-### Advanced Mode (Multi-user, admin, search, etc.)
-
-The `fluxload` command runs the advanced server by default:
-
-```bash
-fluxload -d /path/to/share          # production mode
-fluxload --dev-mode -d /path/to/share  # development mode
-```
-
-Or run directly without installing:
-
-```bash
+# 2. Enterprise server (Database, Whoosh search, WebSocket)
 python -m fluxload.advanced_main -d /path/to/share
-python -m fluxload.advanced_main --dev-mode -d /path/to/share
+```
+
+### Docker Deployment
+
+```bash
+# Build the container
+make docker-build
+
+# Run the container
+make docker-run
+```
+
+Or using standard Docker CLI:
+
+```bash
+docker build -t fluxload:python .
+docker run -d -p 5000:5000 -v /my/files:/data fluxload:python
 ```
 
 ---
 
-> **Note:** `--redis-url` and `--elasticsearch-url` require optional packages:
-> ```bash
-> pip install Flask-Session redis elasticsearch
-> ```
+## REST API Contract
 
-## CLI Options
-
-| Flag | Description |
-|------|-------------|
-| `-d` / `--directory` | Directory to serve (default: current dir) |
-| `-p` / `--port` | Port to listen on (default: 8000) |
-| `-b` / `--bind` | Bind address (default: 0.0.0.0) |
-| `--password` | Enable password protection |
-| `-o` / `--open` | Open browser automatically |
-
-### Advanced-Only Options
-
-| Flag | Description |
-|------|-------------|
-| `--dev-mode` | Enable debug mode with detailed error pages |
-| `--workers` | Number of worker processes (default: 1) |
-| `--max-upload-size` | Max upload size per file (default: 100MB) |
-| `--storage-quota` | Default storage quota per user (default: 5GB) |
-| `--disable-registration` | Disable user registration (default: enabled) |
-| `--disable-file-sharing` | Disable file sharing (default: enabled) |
-| `--database-url` | Database connection URL (default: SQLite) |
-| `--redis-url` | Redis session storage (requires `pip install Flask-Session redis`) |
-| `--elasticsearch-url` | Elasticsearch for search (requires `pip install elasticsearch`) |
-| `--admin-email` | Administrator email displayed in admin dashboard |
-| `--site-name` | Site name displayed in UI (default: FluxLoad Pro) |
+| Method | Endpoint | Description | Response Format |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | Server health and version status | JSON (`status`, `version`) |
+| `GET` | `/api/files?path=` | List directory items, sizes, and timestamps | JSON (`current_path`, `items`) |
+| `POST` | `/api/files/upload` | Multipart file upload | JSON (`success`, `filename`) |
+| `POST` | `/api/files/mkdir` | Create subfolder | JSON (`success`, `dirName`) |
+| `POST` | `/api/files/rename` | Rename file or folder | JSON (`success`, `newName`) |
+| `DELETE` | `/api/files` | Delete file | JSON (`success`, `filename`) |
 
 ---
 
-## Access
+## Developer Workflow
 
-Open `http://<your-ip>:8000` in any browser on the same network. A QR code is printed in the terminal for easy mobile access.
+```bash
+# Display help and available tasks
+make help
+
+# Run test suite with coverage
+make test
+
+# Build and run Docker container
+make docker-build
+make docker-run
+
+# Clean build artifacts
+make clean
+```
+
+---
+
+## Zero-Emoji & Clean Design Policy
+
+FluxLoad enforces a strict **Zero-Emoji policy** across all branches. User interfaces utilize Google Material Icons exclusively, and terminal outputs rely on clean, deterministic ASCII tags (`[*]`, `[+]`, `[!]`, `[ERROR]`). Automated CI pipelines verify zero emoji violations on every commit and pull request.
+
+---
 
 ## License
 
-MIT
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
