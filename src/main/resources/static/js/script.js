@@ -230,8 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('file', file);
         
-        const currentPath = window.location.pathname.includes('path=') ? 
-            new URLSearchParams(window.location.search).get('path') || '' : '';
+        const currentPath = new URLSearchParams(window.location.search).get('path') || '';
         
         if (currentPath) {
             formData.append('path', currentPath);
@@ -239,76 +238,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const startTime = Date.now();
-            
-            const response = await fetch(uploadForm.action, {
-                method: 'POST',
-                body: formData,
-                xhr: () => {
-                    const xhr = new XMLHttpRequest();
-                    
-                    // Enhanced progress tracking with smooth animations
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable) {
-                            const loaded = e.loaded;
-                            const total = e.total;
-                            const percentage = Math.round((loaded / total) * 100);
-                            
-                            // Smooth progress animation
-                            requestAnimationFrame(() => {
-                                progressFill.style.width = percentage + '%';
-                                progressPercentage.textContent = percentage + '%';
-                                progressSize.textContent = `${formatFileSize(loaded)} / ${formatFileSize(total)}`;
-                                
-                                // Change color based on progress
-                                if (percentage < 30) {
-                                    progressFill.style.background = 'linear-gradient(90deg, #f7768e, #ff79c6)';
-                                } else if (percentage < 70) {
-                                    progressFill.style.background = 'linear-gradient(90deg, #ff79c6, #50fa7b)';
-                                } else {
-                                    progressFill.style.background = 'linear-gradient(90deg, #50fa7b, #98c379)';
-                                }
-                                
-                                // Pulse effect near completion
-                                if (percentage > 90) {
-                                    progressFill.style.boxShadow = '0 0 10px rgba(80, 250, 88, 0.3)';
-                                }
-                            });
-                        }
-                    });
-                    
-                    // Handle upload completion
-                    xhr.addEventListener('load', () => {
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                currentUpload = xhr;
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const loaded = e.loaded;
+                        const total = e.total;
+                        const percentage = Math.round((loaded / total) * 100);
+
+                        requestAnimationFrame(() => {
+                            progressFill.style.width = percentage + '%';
+                            progressPercentage.textContent = percentage + '%';
+                            progressSize.textContent = `${formatFileSize(loaded)} / ${formatFileSize(total)}`;
+
+                            if (percentage < 30) {
+                                progressFill.style.background = 'linear-gradient(90deg, #f7768e, #ff79c6)';
+                            } else if (percentage < 70) {
+                                progressFill.style.background = 'linear-gradient(90deg, #ff79c6, #50fa7b)';
+                            } else {
+                                progressFill.style.background = 'linear-gradient(90deg, #50fa7b, #98c379)';
+                            }
+
+                            if (percentage > 90) {
+                                progressFill.style.boxShadow = '0 0 10px rgba(80, 250, 88, 0.3)';
+                            }
+                        });
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 400) {
                         const uploadTime = ((Date.now() - startTime) / 1000).toFixed(1);
                         uploadStatus.textContent = `Upload completed in ${uploadTime}s!`;
                         uploadStatus.className = 'upload-status success';
                         uploadStatus.style.animation = 'bounceIn 0.5s ease-out';
-                    });
-                    
-                    return xhr;
-                }
+                        resolve(xhr.response);
+                    } else {
+                        reject(new Error(`Upload failed with status: ${xhr.status}`));
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error during upload'));
+                });
+
+                xhr.addEventListener('abort', () => {
+                    reject(new Error('Upload cancelled'));
+                });
+
+                xhr.open('POST', uploadForm.action, true);
+                xhr.send(formData);
             });
 
-            if (response.ok) {
-                // Success animation
-                progressFill.style.background = 'linear-gradient(90deg, #98c379, #40a02b)';
-                progressFill.style.width = '100%';
-                
+            // Success animation
+            progressFill.style.background = 'linear-gradient(90deg, #98c379, #40a02b)';
+            progressFill.style.width = '100%';
+
+            setTimeout(() => {
+                progressContainer.style.animation = 'fadeOut 0.5s ease-out forwards';
                 setTimeout(() => {
-                    // Smooth fade out and refresh
-                    progressContainer.style.animation = 'fadeOut 0.5s ease-out forwards';
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                }, 1000);
-            } else {
-                throw new Error(`Upload failed with status: ${response.status}`);
-            }
+                    window.location.reload();
+                }, 500);
+            }, 1000);
         } catch (error) {
             uploadStatus.textContent = 'Upload failed: ' + error.message;
             uploadStatus.className = 'upload-status error';
             uploadStatus.style.animation = 'shake 0.5s ease-in-out';
             progressFill.style.background = 'linear-gradient(90deg, #f7768e, #be5046)';
             resetUploadUI();
+        } finally {
+            currentUpload = null;
         }
     }
 

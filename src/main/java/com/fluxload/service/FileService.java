@@ -395,6 +395,10 @@ public class FileService {
         Path targetPath = baseDirectory.resolve(relativePath).normalize();
         validatePath(targetPath);
 
+        if (targetPath.toAbsolutePath().normalize().equals(baseDirectory.toAbsolutePath().normalize())) {
+            throw new IllegalArgumentException("Cannot delete base directory");
+        }
+
         if (!Files.exists(targetPath)) {
             throw new IllegalArgumentException("File not found: " + relativePath);
         }
@@ -414,6 +418,10 @@ public class FileService {
     public boolean deleteDirectory(String relativePath) throws IOException {
         Path targetPath = baseDirectory.resolve(relativePath).normalize();
         validatePath(targetPath);
+
+        if (targetPath.toAbsolutePath().normalize().equals(baseDirectory.toAbsolutePath().normalize())) {
+            throw new IllegalArgumentException("Cannot delete base directory");
+        }
 
         if (!Files.exists(targetPath) || !Files.isDirectory(targetPath)) {
             throw new IllegalArgumentException("Directory not found: " + relativePath);

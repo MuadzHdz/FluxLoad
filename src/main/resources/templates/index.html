@@ -53,7 +53,7 @@
                                 <span th:text="${dir}"></span>
                             </a>
                             <div class="file-actions">
-                                <form th:action="@{/delete-dir(dirname=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir}, path=${current_path})}" method="post" style="display:inline;" onsubmit="return confirm('Delete directory &quot;' + '${dir}' + '&quot; and all its contents?')">
+                                <form th:action="@{/delete-dir(dirname=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete directory &quot;${dir}&quot; and all its contents?')|">
                                     <button type="submit" class="action-btn delete-btn" title="Delete">
                                         <span class="material-icons">delete</span>
                                     </button>
@@ -71,10 +71,10 @@
                                 <a th:href="@{/preview-page(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="action-btn preview-btn" title="Preview">
                                     <span class="material-icons">visibility</span>
                                 </a>
-                                <button onclick="openRenameModal('${file}', '${current_path}')" class="action-btn rename-btn" title="Rename">
+                                <button th:onclick="|openRenameModal('${file}', '${current_path}')|" class="action-btn rename-btn" title="Rename">
                                     <span class="material-icons">edit</span>
                                 </button>
-                                <form th:action="@{/delete(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file}, path=${current_path})}" method="post" style="display:inline;" onsubmit="return confirm('Delete &quot;' + '${file}' + '&quot;?')">
+                                <form th:action="@{/delete(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete &quot;${file}&quot;?')|">
                                     <button type="submit" class="action-btn delete-btn" title="Delete">
                                         <span class="material-icons">delete</span>
                                     </button>

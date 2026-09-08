@@ -229,4 +229,26 @@ class FileServiceTest {
             fileService.deleteFile("nonexistent.txt");
         });
     }
+
+    @Test
+    void testDeleteBaseDirectoryPrevented() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            fileService.deleteDirectory("");
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            fileService.deleteDirectory(".");
+        });
+        assertTrue(Files.exists(tempDir));
+    }
+
+    @Test
+    void testDeleteFileBaseDirectoryPrevented() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            fileService.deleteFile("");
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            fileService.deleteFile(".");
+        });
+        assertTrue(Files.exists(tempDir));
+    }
 }
