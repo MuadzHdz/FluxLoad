@@ -125,3 +125,4 @@ config/production.py
 *.key
 *.pem
 .secret.*
+.ai-engineering-loop/
