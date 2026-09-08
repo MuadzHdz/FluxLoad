@@ -1,0 +1,30 @@
+name: Java CI
+
+on:
+  push:
+    branches: [ java, main ]
+  pull_request:
+    branches: [ java, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [ '17', '21' ]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ matrix.java-version }}
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Run test suite with Maven
+      run: mvn -B test
+
+    - name: Build JAR package
+      run: mvn -B package -DskipTests

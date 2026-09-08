@@ -9,164 +9,282 @@
 </head>
 <body>
 
-    <div class="theme-switcher theme-carousel" aria-label="Theme switcher">
-        <button id="theme-prev" class="theme-btn" aria-label="Previous theme">&lt;</button>
-        <div class="theme-display" id="theme-display" role="status" aria-live="polite" tabindex="0"></div>
-        <button id="theme-next" class="theme-btn" aria-label="Next theme">&gt;</button>
-    </div>
+    <div class="app-layout">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <div class="nav-left">
+                <a th:href="@{/browse}" class="brand-link">
+                    <span class="material-icons brand-icon">dns</span>
+                    <span class="brand-name">FluxLoad</span>
+                </a>
+                <span class="nav-divider"></span>
+                <nav class="breadcrumb-trail" aria-label="Breadcrumb">
+                    <a th:href="@{/browse}" class="crumb-link" title="Root">
+                        <span class="material-icons crumb-home">home</span>
+                    </a>
+                    <th:block th:if="${not #strings.isEmpty(current_path)}">
+                        <span class="crumb-sep">/</span>
+                        <span class="crumb-active" th:text="${current_path}"></span>
+                    </th:block>
+                </nav>
+            </div>
 
-    <div class="container">
-        <header>
-            <h1>FluxLoad</h1>
-            <div style="display:flex;gap:0.5rem;align-items:center;">
-                <button onclick="location.href='/logout'" class="btn" style="padding:0.4rem 0.8rem;font-size:0.85rem;">
-                    <span class="material-icons" style="font-size:1rem;">logout</span> Logout
+            <div class="nav-right">
+                <div class="search-field">
+                    <span class="material-icons search-field-icon">search</span>
+                    <input type="text" id="fileSearch" class="search-input" placeholder="Filter files..." autocomplete="off">
+                </div>
+
+                <button type="button" class="btn btn-secondary" onclick="openMkdirModal()" title="Create folder">
+                    <span class="material-icons">create_new_folder</span>
+                    <span class="btn-label">New Folder</span>
                 </button>
+
+                <label for="fileInput" class="btn btn-primary" title="Upload files">
+                    <span class="material-icons">cloud_upload</span>
+                    <span class="btn-label">Upload</span>
+                    <input type="file" id="fileInput" multiple style="display:none;">
+                </label>
+
+                <div class="theme-select-wrapper">
+                    <span class="material-icons theme-icon">palette</span>
+                    <select id="themeSelect" class="theme-select" aria-label="Theme">
+                        <option value="tokyo-night">Tokyo Night</option>
+                        <option value="catppuccin-mocha">Catppuccin Mocha</option>
+                        <option value="catppuccin-macchiato">Catppuccin Macchiato</option>
+                        <option value="catppuccin-frappe">Catppuccin Frappe</option>
+                        <option value="catppuccin-latte">Catppuccin Latte</option>
+                        <option value="rose-pine">Rose Pine</option>
+                        <option value="nord">Nord</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="gruvbox-dark">Gruvbox Dark</option>
+                        <option value="gruvbox-light">Gruvbox Light</option>
+                        <option value="monokai-pro">Monokai Pro</option>
+                        <option value="one-dark-pro">One Dark Pro</option>
+                        <option value="solarized-dark">Solarized Dark</option>
+                        <option value="solarized-light">Solarized Light</option>
+                        <option value="ayu-dark">Ayu Dark</option>
+                    </select>
+                </div>
+
+                <a th:href="@{/logout}" class="btn btn-secondary btn-icon" title="Logout">
+                    <span class="material-icons">logout</span>
+                </a>
             </div>
         </header>
 
-        <div id="color-palette-display" class="color-palette-display"></div>
-
-        <main>
-            <div class="file-list-section">
-                <h2>/<span th:text="${current_path}"></span></h2>
-
-                <!-- Create Directory Form -->
-                <form th:action="@{/mkdir(path=${current_path})}" method="post" class="mkdir-form">
-                    <input type="text" name="dirName" placeholder="New folder name" required class="mkdir-input">
-                    <button type="submit" class="btn" style="padding:0.4rem 0.8rem;font-size:0.85rem;">
-                        <span class="material-icons" style="font-size:1rem;">create_new_folder</span> New Folder
-                    </button>
-                </form>
-
-                <ul>
-                    <li th:if="${parent_dir != null}" class="parent-dir">
-                        <a th:href="@{/browse(path=${parent_dir})}" class="file-link">
-                            <span class="material-icons">folder_open</span>
-                            <span>..</span>
-                        </a>
-                    </li>
-                    <li th:each="dir : ${dirs}">
-                        <div class="file-row">
-                            <a th:href="@{/browse(path=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir})}" class="file-link">
-                                <span class="material-icons">folder</span>
-                                <span th:text="${dir}"></span>
-                            </a>
-                            <div class="file-actions">
-                                <form th:action="@{/delete-dir(dirname=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete directory &quot;${dir}&quot; and all its contents?')|">
-                                    <button type="submit" class="action-btn delete-btn" title="Delete">
-                                        <span class="material-icons">delete</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </li>
-                    <li th:each="file : ${files}">
-                        <div class="file-row">
-                            <a th:href="@{/download(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="file-link">
-                                <span class="material-icons">description</span>
-                                <span th:text="${file}"></span>
-                            </a>
-                            <div class="file-actions">
-                                <a th:href="@{/preview-page(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="action-btn preview-btn" title="Preview">
-                                    <span class="material-icons">visibility</span>
-                                </a>
-                                <button th:onclick="|openRenameModal('${file}', '${current_path}')|" class="action-btn rename-btn" title="Rename">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <form th:action="@{/delete(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete &quot;${file}&quot;?')|">
-                                    <button type="submit" class="action-btn delete-btn" title="Delete">
-                                        <span class="material-icons">delete</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-                <p th:if="${#lists.isEmpty(files) and #lists.isEmpty(dirs) and parent_dir == null}">Directory is empty.</p>
+        <!-- Notification Flashes -->
+        <div th:if="${error}" class="flashes-container">
+            <div class="flash-alert flash-error">
+                <span class="material-icons alert-icon">error_outline</span>
+                <span class="flash-text" th:text="${error}"></span>
+                <button type="button" class="alert-dismiss" onclick="this.parentElement.remove()">&times;</button>
             </div>
+        </div>
+        <div th:if="${success}" class="flashes-container">
+            <div class="flash-alert flash-success">
+                <span class="material-icons alert-icon">check_circle</span>
+                <span class="flash-text" th:text="${success}"></span>
+                <button type="button" class="alert-dismiss" onclick="this.parentElement.remove()">&times;</button>
+            </div>
+        </div>
 
-            <div class="upload-section">
-                <h2>Upload</h2>
-
-                <form th:action="@{/upload(path=${#strings.isEmpty(current_path) ? '' : current_path})}" method="post" enctype="multipart/form-data" id="upload-form">
-                    <label for="file-input" class="file-input-label" id="drop-area">
-                        <span class="material-icons">cloud_upload</span> 
-                        <span id="upload-text">Drag & Drop files here or Click to select</span>
-                        <span class="upload-hint">Supports files up to 1000MB (1GB). Multiple files allowed.</span>
-                    </label>
-
-                    <input type="file" name="file" id="file-input" required multiple>
-                    <button type="submit" class="btn" id="upload-btn">
-                        <span class="btn-icon material-icons">upload</span>
-                        <span class="btn-text">Upload Files</span>
-                    </button>
-                </form>
-
-                <div id="upload-progress-container" style="display: none;">
-                    <div class="progress-info">
-                        <span id="progress-filename">Uploading...</span>
-                        <span id="progress-percentage">0%</span>
-                        <span id="progress-size">0 MB / 0 MB</span>
+        <!-- Unified File Explorer Card -->
+        <main class="explorer-container">
+            <div class="explorer-card" id="explorerCard">
+                <!-- Whole-Card Drag and Drop Overlay -->
+                <div class="drag-drop-overlay" id="dragDropOverlay">
+                    <div class="drag-drop-box">
+                        <span class="material-icons drag-icon">cloud_upload</span>
+                        <p class="drag-title">Drop files here to upload</p>
+                        <p class="drag-subtitle">Uploading to /<span th:text="${current_path}"></span></p>
                     </div>
-                    <div class="progress-bar">
-                        <div id="progress-fill" class="progress-fill"></div>
-                    </div>
-                    <div id="upload-status" class="upload-status"></div>
-                    <button id="cancel-upload" class="btn cancel-btn" style="display: none;">Cancel Upload</button>
                 </div>
 
-                <div th:if="${error}" class="flashes">
-                    <ul class="flashes">
-                        <li class="error" th:text="${error}"></li>
-                    </ul>
+                <!-- Table Header -->
+                <div class="table-header">
+                    <div class="col-name">Name</div>
+                    <div class="col-type">Type</div>
+                    <div class="col-actions">Actions</div>
                 </div>
 
-                <div th:if="${success}" class="flashes">
-                    <ul class="flashes">
-                        <li class="success" th:text="${success}"></li>
-                    </ul>
+                <!-- Table Rows -->
+                <div class="table-body" id="fileTableBody">
+                    <th:block th:if="${parent_dir != null}">
+                    <div class="table-row parent-row">
+                        <div class="col-name">
+                            <a th:href="@{/browse(path=${parent_dir})}" class="item-link">
+                                <span class="material-icons item-icon dir-icon">folder_open</span>
+                                <span class="item-title">..</span>
+                            </a>
+                        </div>
+                        <div class="col-type"><span class="badge">Parent</span></div>
+                        <div class="col-actions"></div>
+                    </div>
+                    </th:block>
+
+                    <div th:each="dir : ${dirs}" class="table-row item-row" th:data-name="${dir}" data-type="dir">
+                        <div class="col-name">
+                            <a th:href="@{/browse(path=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir})}" class="item-link">
+                                <span class="material-icons item-icon dir-icon">folder</span>
+                                <span class="item-title" th:text="${dir}"></span>
+                            </a>
+                        </div>
+                        <div class="col-type"><span class="badge badge-dir">Directory</span></div>
+                        <div class="col-actions">
+                            <button type="button" class="action-btn" th:onclick="|openRenameModal('${dir}', '${current_path}')|" title="Rename folder">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <form th:action="@{/delete-dir(dirname=${#strings.isEmpty(current_path) ? dir : current_path + '/' + dir}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete directory &quot;${dir}&quot; and all its contents?')|">
+                                <button type="submit" class="action-btn action-danger" title="Delete folder">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div th:each="file : ${files}" class="table-row item-row" th:data-name="${file}" data-type="file">
+                        <div class="col-name">
+                            <div class="file-name-group">
+                                <span class="material-icons item-icon file-icon">insert_drive_file</span>
+                                <a th:href="@{/download(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="item-link" th:title="${file}">
+                                    <span class="item-title" th:text="${file}"></span>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-type"><span class="badge badge-file">File</span></div>
+                        <div class="col-actions">
+                            <a th:href="@{/preview-page(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="action-btn" title="Preview file">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                            <a th:href="@{/download(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file})}" class="action-btn" title="Download file">
+                                <span class="material-icons">download</span>
+                            </a>
+                            <button type="button" class="action-btn" th:onclick="|openRenameModal('${file}', '${current_path}')|" title="Rename file">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <form th:action="@{/delete(filename=${#strings.isEmpty(current_path) ? file : current_path + '/' + file}, path=${current_path})}" method="post" style="display:inline;" th:onsubmit="|return confirm('Delete &quot;${file}&quot;?')|">
+                                <button type="submit" class="action-btn action-danger" title="Delete file">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(files) and #lists.isEmpty(dirs) and parent_dir == null}" class="empty-state">
+                        <span class="material-icons empty-icon">folder_open</span>
+                        <p class="empty-title">Directory is empty</p>
+                        <p class="empty-subtitle">Drag and drop files here or click Upload to get started</p>
+                    </div>
                 </div>
             </div>
         </main>
 
-        <footer>
-            <p>Powered by <a href="https://github.com/MuadzHdz/FluxLoad" target="_blank">MuadzHdz</a></p>
+        <footer class="app-footer">
+            <span>FluxLoad file server</span>
+            <span class="footer-sep">&bull;</span>
+            <span>Minimalist Java edition</span>
         </footer>
     </div>
 
-    <!-- Rename Modal -->
-    <div id="rename-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeRenameModal()">&times;</span>
-            <h2>Rename</h2>
-            <form id="rename-form" method="post" style="display:flex;gap:0.5rem;margin-top:1rem;">
-                <input type="text" name="newName" id="rename-input" required style="flex:1;">
-                <button type="submit" class="btn">Rename</button>
+    <!-- Floating Upload Progress Toast -->
+    <div id="uploadToast" class="upload-toast" style="display: none;">
+        <div class="toast-header">
+            <div class="toast-title-group">
+                <span class="material-icons toast-spin">sync</span>
+                <span id="toastFilename" class="toast-name">Uploading...</span>
+            </div>
+            <button type="button" id="toastCancelBtn" class="toast-close" title="Cancel upload">&times;</button>
+        </div>
+        <div class="toast-progress-track">
+            <div id="toastProgressBar" class="toast-progress-bar"></div>
+        </div>
+        <div class="toast-meta">
+            <span id="toastPercent" class="toast-percent">0%</span>
+            <span id="toastDetails" class="toast-details"></span>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div id="mkdirModal" class="modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Create New Folder</h3>
+                <button type="button" class="modal-close" onclick="closeMkdirModal()">&times;</button>
+            </div>
+            <form th:action="@{/mkdir(path=${current_path})}" method="post">
+                <div class="modal-body">
+                    <label for="dirNameInput" class="form-label">Folder Name</label>
+                    <input type="text" id="dirNameInput" name="dirName" class="form-input" placeholder="e.g. documents" required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeMkdirModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Folder</button>
+                </div>
             </form>
         </div>
     </div>
 
+    <!-- Rename Modal -->
+    <div id="renameModal" class="modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="renameTitle">Rename</h3>
+                <button type="button" class="modal-close" onclick="closeRenameModal()">&times;</button>
+            </div>
+            <form id="renameForm" method="post">
+                <div class="modal-body">
+                    <label for="newNameInput" class="form-label">New Name</label>
+                    <input type="text" id="newNameInput" name="newName" class="form-input" required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeRenameModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Rename</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden fallback upload form for path reference -->
+    <form th:action="@{/upload(path=${#strings.isEmpty(current_path) ? '' : current_path})}" method="post" enctype="multipart/form-data" id="upload-form" style="display:none;"></form>
+
     <script th:src="@{/js/script.js}"></script>
-    <script>
+    <script th:inline="javascript">
         function openRenameModal(filename, currentPath) {
-            document.getElementById('rename-input').value = filename;
-            var form = document.getElementById('rename-form');
+            document.getElementById('newNameInput').value = filename;
+            var form = document.getElementById('renameForm');
             form.action = '/rename?filename=' + encodeURIComponent(currentPath ? currentPath + '/' + filename : filename) + '&path=' + encodeURIComponent(currentPath);
-            document.getElementById('rename-modal').style.display = 'flex';
+            document.getElementById('renameModal').style.display = 'flex';
         }
 
         function closeRenameModal() {
-            document.getElementById('rename-modal').style.display = 'none';
+            document.getElementById('renameModal').style.display = 'none';
         }
 
-        // Close modal on outside click
-        window.onclick = function(event) {
-            var modal = document.getElementById('rename-modal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
+        function openMkdirModal() {
+            document.getElementById('mkdirModal').style.display = 'flex';
+            document.getElementById('dirNameInput').focus();
         }
+
+        function closeMkdirModal() {
+            document.getElementById('mkdirModal').style.display = 'none';
+        }
+
+        window.addEventListener('click', function(event) {
+            ['mkdirModal', 'renameModal'].forEach(function(id) {
+                var modal = document.getElementById(id);
+                if (modal && event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeMkdirModal();
+                closeRenameModal();
+            }
+        });
     </script>
 </body>
 </html>
