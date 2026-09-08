@@ -10,6 +10,7 @@ from functools import wraps
 from getpass import getpass
 
 from fluxload import __version__
+from .utils import validate_path
 
 try:
     import qrcode
@@ -124,9 +125,7 @@ def create_app():
     def browse(path=""):
         current_dir = os.path.abspath(os.path.join(UPLOAD_DIRECTORY, path))
 
-        if not os.path.isdir(current_dir) or not current_dir.startswith(
-            os.path.abspath(UPLOAD_DIRECTORY)
-        ):
+        if not os.path.isdir(current_dir) or not validate_path(current_dir, UPLOAD_DIRECTORY):
             flash("Error: Invalid or inaccessible directory.", "error")
             return redirect(url_for("browse"))
 
@@ -174,9 +173,7 @@ def create_app():
 
             upload_path = os.path.join(app.config["UPLOAD_FOLDER"], path, filename)
 
-            if not os.path.abspath(upload_path).startswith(
-                os.path.abspath(app.config["UPLOAD_FOLDER"])
-            ):
+            if not validate_path(upload_path, app.config["UPLOAD_FOLDER"]):
                 flash("Invalid path.", "error")
                 return redirect(url_for("browse", path=path))
 
@@ -192,9 +189,7 @@ def create_app():
     @login_required
     def download(filename):
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.abspath(file_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
             return redirect(url_for("browse"))
 
@@ -218,10 +213,12 @@ def create_app():
     @login_required
     def delete_file(filename):
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.abspath(file_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
+            return redirect(url_for("browse"))
+
+        if os.path.abspath(file_path) == os.path.abspath(app.config["UPLOAD_FOLDER"]):
+            flash("Cannot delete root directory.", "error")
             return redirect(url_for("browse"))
 
         if os.path.isfile(file_path):
@@ -267,9 +264,7 @@ def create_app():
 
         new_dir_path = os.path.join(app.config["UPLOAD_FOLDER"], path, dir_name)
 
-        if not os.path.abspath(new_dir_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(new_dir_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
             return redirect(url_for("browse", path=path))
 
@@ -302,16 +297,16 @@ def create_app():
             app.config["UPLOAD_FOLDER"], os.path.dirname(filename), new_name
         )
 
-        if not os.path.abspath(old_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(old_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
             return redirect(url_for("browse", path=os.path.dirname(filename)))
 
-        if not os.path.abspath(new_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(new_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid new path.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        if os.path.exists(new_path):
+            flash("Target file or directory already exists.", "error")
             return redirect(url_for("browse", path=os.path.dirname(filename)))
 
         try:
@@ -329,9 +324,7 @@ def create_app():
     @login_required
     def preview_file(filename):
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.abspath(file_path).startswith(
-            os.path.abspath(app.config["UPLOAD_FOLDER"])
-        ):
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
             return redirect(url_for("browse"))
 

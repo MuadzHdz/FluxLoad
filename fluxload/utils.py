@@ -13,7 +13,7 @@ def validate_path(path, base_dir):
     try:
         abs_base = os.path.abspath(base_dir)
         abs_path = os.path.abspath(path)
-        return abs_path.startswith(abs_base)
+        return os.path.commonpath([abs_base, abs_path]) == abs_base
     except Exception:
         return False
 

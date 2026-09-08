@@ -12,7 +12,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 
-from fluxload.advanced_server import create_app
+from fluxload.advanced_server import create_app, socketio
 from fluxload.models import db, SystemSettings
 from fluxload.search_engine import SEARCH_ENGINE
 from fluxload import __version__
@@ -308,12 +308,12 @@ def main():
             app.config[s.key] = s.value
 
         # Initialize search index
-        print("🔍 Initializing search index...")
+        print("[*] Initializing search index...")
         try:
             SEARCH_ENGINE.index_directory(args.directory)
-            print(f"✅ Search index initialized for: {args.directory}")
+            print(f"[+] Search index initialized for: {args.directory}")
         except Exception as e:
-            print(f"⚠️  Warning: Could not initialize search index: {e}")
+            print(f"[!] Warning: Could not initialize search index: {e}")
 
     # Setup admin user in DB if password is set
     if args.password:
@@ -332,20 +332,20 @@ def main():
                 admin_user.set_password(PASSWORD_GLOBAL)
                 db.session.add(admin_user)
                 db.session.commit()
-                print("✅ Admin user created successfully")
+                print("[+] Admin user created successfully")
             else:
                 admin_user.set_password(PASSWORD_GLOBAL)
                 db.session.commit()
-                print("✅ Admin password updated")
+                print("[+] Admin password updated")
 
     # Get local IP and display server info
     host = args.bind if args.bind != "0.0.0.0" else get_local_ip()
     url = f"http://{host}:{args.port}"
 
     print(f"""
-🚀 FluxLoad Pro v{__version__} Starting...
+FluxLoad Pro v{__version__} Starting...
 
-🌐 Server Information:
+Server Information:
    URL: {url}
    Directory: {args.directory}
    Port: {args.port}
@@ -354,23 +354,23 @@ def main():
    Debug: {args.debug}
    Dev Mode: {args.dev_mode}
 
-🔧 Features Enabled:
-   User Registration: {"✅" if enable_registration else "❌"}
-   File Sharing: {"✅" if enable_file_sharing else "❌"}
-   Search Engine: ✅
-   Real-time Collaboration: ✅
-   Multi-user Support: ✅
-   File Versioning: ✅
-   Admin Dashboard: ✅
-   API Endpoints: ✅
+Features Enabled:
+   User Registration: {"Enabled" if enable_registration else "Disabled"}
+   File Sharing: {"Enabled" if enable_file_sharing else "Disabled"}
+   Search Engine: Enabled
+   Real-time Collaboration: Enabled
+   Multi-user Support: Enabled
+   File Versioning: Enabled
+   Admin Dashboard: Enabled
+   API Endpoints: Enabled
 
-💾 Storage Configuration:
+Storage Configuration:
    Max Upload Size: {args.max_upload_size}
    Default User Quota: {args.storage_quota}
    Database: {"SQLite (built-in)" if not args.database_url else args.database_url}
    Search Index: {"Whoosh (built-in)" if not args.elasticsearch_url else "Elasticsearch"}
 
-📁 Directory Structure:
+Directory Structure:
    Upload Directory: {args.directory}
    Database: {args.database_url or f"sqlite:///{args.directory}/fluxload.db"}
    Search Index: {args.directory}/search_index
@@ -380,15 +380,15 @@ def main():
     try:
         import qrcode
 
-        print(f"\n📱 Scan QR code to connect from mobile:")
+        print(f"\nScan QR code to connect from mobile:")
         qr = qrcode.QRCode()
         qr.add_data(url)
         qr.make(fit=True)
         qr.print_ascii(tty=True)
     except ImportError:
-        print("\n📱 Install 'qrcode[pil]' for QR code support: pip install qrcode[pil]")
+        print("\nInstall 'qrcode[pil]' for QR code support: pip install qrcode[pil]")
     except Exception as e:
-        print(f"\n⚠️  Could not generate QR code: {e}")
+        print(f"\n[!] Could not generate QR code: {e}")
 
     # Configure Redis session storage if URL provided
     if args.redis_url:
@@ -401,13 +401,13 @@ def main():
             app.config["SESSION_PERMANENT"] = False
             app.config["SESSION_USE_SIGNER"] = True
             Session(app)
-            print(f"✅ Redis session storage configured at {args.redis_url}")
+            print(f"[+] Redis session storage configured at {args.redis_url}")
         except ImportError:
             print(
-                "⚠️  Flask-Session or redis not installed. Run: pip install Flask-Session redis"
+                "[!] Flask-Session or redis not installed. Run: pip install Flask-Session redis"
             )
         except Exception as e:
-            print(f"⚠️  Failed to configure Redis session storage: {e}")
+            print(f"[!] Failed to configure Redis session storage: {e}")
 
     # Configure Elasticsearch search if URL provided
     if args.elasticsearch_url:
@@ -416,21 +416,21 @@ def main():
 
             es_client = Elasticsearch(args.elasticsearch_url)
             if es_client.ping():
-                print(f"✅ Elasticsearch connected at {args.elasticsearch_url}")
+                print(f"[+] Elasticsearch connected at {args.elasticsearch_url}")
                 app.config["ELASTICSEARCH_CLIENT"] = es_client
             else:
-                print(f"⚠️  Could not connect to Elasticsearch at {args.elasticsearch_url}")
+                print(f"[!] Could not connect to Elasticsearch at {args.elasticsearch_url}")
         except ImportError:
-            print("⚠️  elasticsearch-py not installed. Run: pip install elasticsearch")
+            print("[!] elasticsearch-py not installed. Run: pip install elasticsearch")
         except Exception as e:
-            print(f"⚠️  Failed to connect Elasticsearch: {e}")
+            print(f"[!] Failed to connect Elasticsearch: {e}")
 
     # Setup background tasks
     file_monitor = setup_background_tasks(app)
 
     # Graceful shutdown handler
     def signal_handler(signum, frame):
-        print(f"\n🛑 Shutting down gracefully...")
+        print(f"\nShutting down gracefully...")
         if file_monitor:
             file_monitor.stop()
         try:
@@ -450,28 +450,28 @@ def main():
         threading.Timer(1, lambda: webbrowser.open(url)).start()
 
     # Start server
-    print(f"\n🎯 Server starting at {url}")
+    print(f"\nServer starting at {url}")
     print("Press Ctrl+C to stop the server")
 
     try:
         if args.dev_mode:
-            app.run(
+            socketio.run(
+                app,
                 host=args.bind,
                 port=args.port,
                 debug=True,
                 use_reloader=False,
-                threaded=True,
             )
         else:
             if args.workers > 1:
-                print("⚠️  Multi-worker mode requires gunicorn; falling back to threaded mode.")
+                print("[!] Multi-worker mode requires gunicorn; falling back to threaded mode.")
 
-            app.run(host=args.bind, port=args.port, debug=args.debug, threaded=True)
+            socketio.run(app, host=args.bind, port=args.port, debug=args.debug)
 
     except KeyboardInterrupt:
-        print("\n👋 Server stopped by user")
+        print("\nServer stopped by user")
     except Exception as e:
-        print(f"\n❌ Server error: {e}")
+        print(f"\n[ERROR] Server error: {e}")
         sys.exit(1)
 
 

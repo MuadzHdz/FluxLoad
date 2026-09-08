@@ -4,6 +4,7 @@ Real-time WebSocket handlers for FluxLoad Pro
 
 from flask_login import current_user
 from flask import request
+from flask_socketio import join_room, leave_room
 from datetime import datetime, timezone
 
 from .models import Activity, UserSession, db
@@ -27,6 +28,9 @@ def register_handlers(socketio):
         db.session.commit()
 
         room = f"user_{current_user.id}"
+        join_room(room)
+        join_room("system")
+
         socketio.emit(
             "connected",
             {
@@ -52,6 +56,8 @@ def register_handlers(socketio):
     def handle_disconnect():
         """Handle client disconnection"""
         if current_user.is_authenticated:
+            leave_room(f"user_{current_user.id}")
+            leave_room("system")
             session_data = UserSession.query.filter_by(session_token=request.sid).first()
             if session_data:
                 session_data.is_active = False
@@ -77,6 +83,7 @@ def register_handlers(socketio):
         file_id = data.get("file_id")
         if file_id:
             room = f"file_{file_id}"
+            join_room(room)
 
             socketio.emit(
                 "joined_file_room",
@@ -107,6 +114,7 @@ def register_handlers(socketio):
         file_id = data.get("file_id")
         if file_id:
             room = f"file_{file_id}"
+            leave_room(room)
             socketio.emit(
                 "left_file_room",
                 {

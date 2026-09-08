@@ -9,8 +9,12 @@ import threading
 import webbrowser
 import mimetypes
 import hashlib
+import hmac
 from datetime import datetime, timezone
 from functools import wraps
+
+from .utils import validate_path
+from .api_routes import register_api_routes
 
 from flask import (
     Flask,
@@ -160,21 +164,35 @@ def create_app(directory=None, database_url=None):
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
-        # If no password is set, redirect to dashboard directly
-        if not PASSWORD:
+        if current_user.is_authenticated:
+            return redirect(url_for("dashboard"))
+
+        if request.method == "GET" and not PASSWORD and User.query.filter_by(is_active=True).count() == 0:
             return redirect(url_for("dashboard"))
 
         if request.method == "POST":
+            username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            remember = request.form.get("remember", False)
+            remember = bool(request.form.get("remember", False))
 
             if not password:
                 flash("Password is required.", "error")
                 return render_template("login.html", theme="tokyo-night")
 
-            # Check for admin fallback password
-            if password == PASSWORD:
-                # Create temp admin user if not exists
+            # 1. Try DB user authentication if username is provided
+            if username:
+                user = User.query.filter_by(username=username).first()
+                if user and user.check_password(password):
+                    if not user.is_active:
+                        flash("Account is disabled.", "error")
+                        return render_template("login.html", theme="tokyo-night")
+                    login_user(user, remember=remember)
+                    flash("Login successful!", "success")
+                    next_url = request.args.get("next")
+                    return redirect(next_url or url_for("dashboard"))
+
+            # 2. Check for admin fallback password
+            if PASSWORD and hmac.compare_digest(password, PASSWORD):
                 admin_user = User.query.filter_by(username="admin").first()
                 if not admin_user:
                     admin_user = User(
@@ -191,8 +209,8 @@ def create_app(directory=None, database_url=None):
                 flash("Login successful!", "success")
                 next_url = request.args.get("next")
                 return redirect(next_url or url_for("dashboard"))
-            else:
-                flash("Invalid password.", "error")
+
+            flash("Invalid credentials.", "error")
 
         theme = request.cookies.get("theme", "tokyo-night")
         return render_template("login.html", theme=theme)
@@ -342,9 +360,9 @@ def create_app(directory=None, database_url=None):
 
         current_dir = os.path.join(UPLOAD_DIRECTORY, path)
 
-        if not os.path.isdir(current_dir) or not os.path.abspath(
-            current_dir
-        ).startswith(os.path.abspath(UPLOAD_DIRECTORY)):
+        if not os.path.isdir(current_dir) or not validate_path(
+            current_dir, UPLOAD_DIRECTORY
+        ):
             flash("Error: Invalid or inaccessible directory.", "error")
             return redirect(url_for("browse", path=username))
 
@@ -416,9 +434,7 @@ def create_app(directory=None, database_url=None):
             upload_path = os.path.join(app.config["UPLOAD_FOLDER"], path, filename)
 
             # Security check
-            if not os.path.abspath(upload_path).startswith(
-                os.path.abspath(app.config["UPLOAD_FOLDER"])
-            ):
+            if not validate_path(upload_path, app.config["UPLOAD_FOLDER"]):
                 flash("Invalid path.", "error")
                 return redirect(url_for("browse", path=path))
 
@@ -507,7 +523,7 @@ def create_app(directory=None, database_url=None):
             return redirect(url_for("browse"))
 
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.isfile(file_path):
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]) or not os.path.isfile(file_path):
             flash("File not found.", "error")
             return redirect(url_for("browse"))
 
@@ -554,7 +570,7 @@ def create_app(directory=None, database_url=None):
 
         # Get file info
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.isfile(file_path):
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]) or not os.path.isfile(file_path):
             flash("File not found.", "error")
             return redirect(url_for("browse"))
 
@@ -617,7 +633,7 @@ def create_app(directory=None, database_url=None):
             return redirect(url_for("browse", path=path))
 
         new_dir_path = os.path.join(app.config["UPLOAD_FOLDER"], path, dir_name)
-        if not os.path.abspath(new_dir_path).startswith(os.path.abspath(app.config["UPLOAD_FOLDER"])):
+        if not validate_path(new_dir_path, app.config["UPLOAD_FOLDER"]):
             flash("Invalid path.", "error")
             return redirect(url_for("browse", path=path))
 
@@ -630,6 +646,115 @@ def create_app(directory=None, database_url=None):
             flash(f"Error creating directory: {e}", "error")
 
         return redirect(url_for("browse", path=path))
+
+    @app.route("/delete/<path:filename>", methods=["POST"])
+    @login_required
+    def delete_file(filename):
+        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        if not validate_path(file_path, app.config["UPLOAD_FOLDER"]):
+            flash("Invalid path.", "error")
+            return redirect(url_for("browse"))
+
+        if os.path.abspath(file_path) == os.path.abspath(app.config["UPLOAD_FOLDER"]):
+            flash("Cannot delete root directory.", "error")
+            return redirect(url_for("browse"))
+
+        file_obj = File.query.filter_by(file_path=filename).first()
+        if file_obj and not (current_user.role == "admin" or file_obj.owner_id == current_user.id):
+            flash("Permission denied.", "error")
+            return redirect(url_for("browse"))
+
+        if os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+                if file_obj:
+                    try:
+                        SEARCH_ENGINE.delete_file(file_obj.id)
+                    except Exception:
+                        pass
+                    db.session.delete(file_obj)
+                    db.session.commit()
+                flash(
+                    f'File "{os.path.basename(filename)}" deleted successfully!',
+                    "success",
+                )
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error deleting file: {e}", "error")
+        elif os.path.isdir(file_path):
+            try:
+                import shutil
+                shutil.rmtree(file_path)
+                if file_obj:
+                    db.session.delete(file_obj)
+                    db.session.commit()
+                flash(
+                    f'Directory "{os.path.basename(filename)}" deleted successfully!',
+                    "success",
+                )
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error deleting directory: {e}", "error")
+        else:
+            flash("File or directory not found.", "error")
+
+        path = os.path.dirname(filename)
+        return redirect(url_for("browse", path=path))
+
+    @app.route("/rename/<path:filename>", methods=["POST"])
+    @login_required
+    def rename_file(filename):
+        new_name = request.form.get("new_name", "").strip()
+        if not new_name:
+            flash("New name cannot be empty.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        from werkzeug.utils import secure_filename
+        new_name = secure_filename(new_name)
+        if not new_name:
+            flash("Invalid filename.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        old_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        new_rel_path = os.path.join(os.path.dirname(filename), new_name) if os.path.dirname(filename) else new_name
+        new_path = os.path.join(app.config["UPLOAD_FOLDER"], new_rel_path)
+
+        if not validate_path(old_path, app.config["UPLOAD_FOLDER"]):
+            flash("Invalid path.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        if not validate_path(new_path, app.config["UPLOAD_FOLDER"]):
+            flash("Invalid new path.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        if os.path.exists(new_path):
+            flash("Target file or directory already exists.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        file_obj = File.query.filter_by(file_path=filename).first()
+        if file_obj and not (current_user.role == "admin" or file_obj.owner_id == current_user.id):
+            flash("Permission denied.", "error")
+            return redirect(url_for("browse", path=os.path.dirname(filename)))
+
+        try:
+            os.rename(old_path, new_path)
+            if file_obj:
+                file_obj.filename = new_name
+                file_obj.file_path = new_rel_path
+                db.session.commit()
+                try:
+                    SEARCH_ENGINE.index_file(file_obj)
+                except Exception:
+                    pass
+            flash(
+                f'Renamed "{os.path.basename(filename)}" to "{new_name}" successfully!',
+                "success",
+            )
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error renaming: {e}", "error")
+
+        return redirect(url_for("browse", path=os.path.dirname(filename)))
 
     # ===== ADMIN ROUTES =====
 
@@ -676,6 +801,9 @@ def create_app(directory=None, database_url=None):
     # Register WebSocket handlers
     from .websocket_handlers import register_handlers
     register_handlers(socketio)
+
+    # Register REST API routes
+    register_api_routes(app)
 
     return app
 

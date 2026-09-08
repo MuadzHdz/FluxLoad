@@ -599,7 +599,7 @@ class FluxLoadPro {
 
     showSystemNotification(message, type = 'info') {
         // System-wide notifications (for admins)
-        this.showNotification(`🔔 ${message}`, type);
+        this.showNotification(message, type);
     }
 
     getNotificationIcon(type) {
