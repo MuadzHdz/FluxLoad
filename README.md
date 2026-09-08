@@ -2,6 +2,7 @@
 
 High-performance, minimalist file sharing server engineered with strict security boundaries, clean aesthetics, and dual-engine architecture (Python & Java).
 
+[![PyPI Version](https://img.shields.io/pypi/v/fluxload.svg?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/fluxload/)
 [![Python CI](https://github.com/muadzhdz/fluxload/actions/workflows/ci.yml/badge.svg?branch=python)](https://github.com/muadzhdz/fluxload/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://python.org)
@@ -57,10 +58,25 @@ git checkout java
 
 ### Installation
 
+#### Option A: Install via PyPI (Recommended)
+
+FluxLoad is officially distributed on [PyPI (Python Package Index)](https://pypi.org/project/fluxload/):
+
+```bash
+# Install latest release
+pip install fluxload
+
+# Or upgrade to the latest version
+pip install --upgrade fluxload
+```
+
+#### Option B: Install from Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/muadzhdz/fluxload.git
 cd fluxload
+git checkout python
 
 # Install in editable mode
 pip install -e .
