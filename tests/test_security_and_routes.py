@@ -44,16 +44,34 @@ class TestSecurityAndPathValidation:
 
 class TestServerDeleteSafeguard:
     def test_delete_root_prevented(self, tmp_path):
-        app = server.create_app()
-        app.config["UPLOAD_FOLDER"] = str(tmp_path)
+        upload_dir = str(tmp_path / "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        app = server.create_app(directory=upload_dir)
         app.config["TESTING"] = True
         client = app.test_client()
 
-        # Attempt to delete root directory
+        # Attempt to delete root via path "."
         res = client.post("/delete/.", follow_redirects=True)
         assert res.status_code == 200
-        # Root directory must still exist!
-        assert os.path.exists(str(tmp_path))
+        assert os.path.exists(upload_dir)
+
+    def test_simple_server_api_files(self, tmp_path):
+        upload_dir = str(tmp_path / "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        with open(os.path.join(upload_dir, "sample.txt"), "w") as f:
+            f.write("hello world")
+        os.makedirs(os.path.join(upload_dir, "subdir"), exist_ok=True)
+
+        app = server.create_app(directory=upload_dir)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        res = client.get("/api/files")
+        assert res.status_code == 200
+        data = res.get_json()
+        assert "items" in data
+        names = [item["name"] for item in data["items"]]
+        assert "sample.txt" in names
+        assert "subdir" in names
 
 
 class TestAdvancedServerAndApi:

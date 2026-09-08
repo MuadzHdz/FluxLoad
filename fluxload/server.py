@@ -29,6 +29,7 @@ try:
         redirect,
         url_for,
         session,
+        jsonify,
     )
     from werkzeug.utils import secure_filename
 
@@ -53,13 +54,17 @@ def login_required(f):
     return decorated_function
 
 
-def create_app():
+def create_app(directory=None):
     """Creates and configures the Flask application."""
     if not FLASK_AVAILABLE:
         print(
             "Fatal: Flask is not installed. Please run 'pip install Flask Werkzeug qrcode[pil]'."
         )
         sys.exit(1)
+
+    global UPLOAD_DIRECTORY
+    if directory:
+        UPLOAD_DIRECTORY = directory
 
     app = Flask(__name__)
     app.config["UPLOAD_FOLDER"] = UPLOAD_DIRECTORY
@@ -113,6 +118,38 @@ def create_app():
     @app.route("/health")
     def health():
         return {"status": "ok", "version": __version__}, 200
+
+    @app.route("/api/files", methods=["GET"])
+    @login_required
+    def api_files():
+        path = request.args.get("path", "").strip("/")
+        current_dir = os.path.abspath(os.path.join(UPLOAD_DIRECTORY, path))
+        if not os.path.isdir(current_dir) or not validate_path(current_dir, UPLOAD_DIRECTORY):
+            return jsonify({"error": "Invalid or inaccessible directory."}), 400
+
+        try:
+            items = os.listdir(current_dir)
+            result = []
+            for item in sorted(items, key=lambda x: x.lower()):
+                full_p = os.path.join(current_dir, item)
+                rel_p = os.path.join(path, item) if path else item
+                is_dir = os.path.isdir(full_p)
+                size = 0 if is_dir else os.path.getsize(full_p)
+                mtime = os.path.getmtime(full_p)
+                result.append({
+                    "name": item,
+                    "path": rel_p,
+                    "is_directory": is_dir,
+                    "size": size,
+                    "modified": mtime,
+                })
+            return jsonify({
+                "current_path": path,
+                "parent_path": os.path.dirname(path) if path else None,
+                "items": result,
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/")
     @login_required

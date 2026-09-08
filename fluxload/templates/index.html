@@ -9,203 +9,289 @@
 </head>
 <body>
 
-    <div class="theme-switcher theme-carousel" aria-label="Theme switcher">
-        <button id="theme-prev" class="theme-btn" aria-label="Previous theme">&lt;</button>
-        <div class="theme-display" id="theme-display" role="status" aria-live="polite" tabindex="0"></div>
-        <button id="theme-next" class="theme-btn" aria-label="Next theme">&gt;</button>
-    </div>
+    <div class="app-layout">
+        <!-- Top Navigation Bar -->
+        <header class="top-nav">
+            <div class="nav-left">
+                <a href="{{ url_for('browse', path='') }}" class="brand-link">
+                    <span class="material-icons brand-icon">dns</span>
+                    <span class="brand-name">FluxLoad</span>
+                </a>
+                <span class="nav-divider"></span>
+                <nav class="breadcrumb-trail" aria-label="Breadcrumb">
+                    <a href="{{ url_for('browse', path='') }}" class="crumb-link" title="Root">
+                        <span class="material-icons crumb-home">home</span>
+                    </a>
+                    {% if current_path %}
+                        {% set segments = current_path.split('/') %}
+                        {% set accumulated = namespace(path='') %}
+                        {% for seg in segments %}
+                            {% if seg %}
+                                {% if accumulated.path %}
+                                    {% set accumulated.path = accumulated.path + '/' + seg %}
+                                {% else %}
+                                    {% set accumulated.path = seg %}
+                                {% endif %}
+                                <span class="crumb-sep">/</span>
+                                {% if loop.last %}
+                                    <span class="crumb-active">{{ seg }}</span>
+                                {% else %}
+                                    <a href="{{ url_for('browse', path=accumulated.path) }}" class="crumb-link">{{ seg }}</a>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </nav>
+            </div>
 
-    <div class="container">
-        <header>
-            <h1>FluxLoad</h1>
+            <div class="nav-right">
+                <div class="search-field">
+                    <span class="material-icons search-field-icon">search</span>
+                    <input type="text" id="fileSearch" class="search-input" placeholder="Filter files..." autocomplete="off">
+                </div>
+
+                <button type="button" class="btn btn-secondary" onclick="openMkdirModal()" title="Create folder">
+                    <span class="material-icons">create_new_folder</span>
+                    <span class="btn-label">New Folder</span>
+                </button>
+
+                <label for="fileInput" class="btn btn-primary" title="Upload files">
+                    <span class="material-icons">cloud_upload</span>
+                    <span class="btn-label">Upload</span>
+                    <input type="file" id="fileInput" multiple style="display:none;">
+                </label>
+
+                <div class="theme-select-wrapper">
+                    <span class="material-icons theme-icon">palette</span>
+                    <select id="themeSelect" class="theme-select" aria-label="Theme">
+                        <option value="tokyo-night">Tokyo Night</option>
+                        <option value="catppuccin-mocha">Catppuccin Mocha</option>
+                        <option value="catppuccin-macchiato">Catppuccin Macchiato</option>
+                        <option value="catppuccin-frappe">Catppuccin Frappe</option>
+                        <option value="catppuccin-latte">Catppuccin Latte</option>
+                        <option value="rose-pine">Rose Pine</option>
+                        <option value="nord">Nord</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="gruvbox-dark">Gruvbox Dark</option>
+                        <option value="gruvbox-light">Gruvbox Light</option>
+                        <option value="monokai-pro">Monokai Pro</option>
+                        <option value="one-dark-pro">One Dark Pro</option>
+                        <option value="solarized-dark">Solarized Dark</option>
+                        <option value="solarized-light">Solarized Light</option>
+                        <option value="ayu-dark">Ayu Dark</option>
+                    </select>
+                </div>
+
+                {% if session.get('logged_in') %}
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-icon" title="Logout">
+                    <span class="material-icons">logout</span>
+                </a>
+                {% endif %}
+            </div>
         </header>
 
-        <div id="color-palette-display" class="color-palette-display"></div>
-
-        <main>
-            <div class="file-list-section">
-                <h2>/{{ current_path }}</h2>
-                <ul>
-                    {% if parent_dir is not none %}
-                        <li class="parent-dir">
-                            <a href="{{ url_for('browse', path=parent_dir) }}"><span class="material-icons">folder_open</span>&nbsp;&nbsp;&nbsp;<span>..</span></a>
-                        </li>
-                    {% endif %}
-                    {% for d in dirs %}
-                        <li class="file-item">
-                            <div class="file-info">
-                                <a href="{{ url_for('browse', path=current_path + '/' + d if current_path else d) }}">
-                                    <span class="material-icons">folder</span>
-                                    <span>{{ d }}</span>
-                                </a>
-                            </div>
-                            <div class="file-actions">
-                                <button class="action-btn" onclick="showRenameDialog('{{ current_path + '/' + d if current_path else d }}', 'directory')" title="Rename">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <button class="action-btn delete-btn" onclick="confirmDelete('{{ current_path + '/' + d if current_path else d }}', 'directory')" title="Delete">
-                                    <span class="material-icons">delete</span>
-                                </button>
-                            </div>
-                        </li>
-                    {% endfor %}
-                    {% for f in files %}
-                        <li class="file-item">
-                            <div class="file-info">
-                                {% if f|file_previewable %}
-                                    <a href="{{ url_for('preview_file', filename=current_path + '/' + f if current_path else f) }}" class="preview-link">
-                                        <span class="material-icons">visibility</span>
-                                    </a>
-                                {% endif %}
-                                <a href="{{ url_for('download', filename=current_path + '/' + f if current_path else f) }}">
-                                    <span class="material-icons">insert_drive_file</span>
-                                    <span>{{ f }}</span>
-                                </a>
-                            </div>
-                            <div class="file-actions">
-                                <button class="action-btn" onclick="showRenameDialog('{{ current_path + '/' + f if current_path else f }}', 'file')" title="Rename">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <button class="action-btn delete-btn" onclick="confirmDelete('{{ current_path + '/' + f if current_path else f }}', 'file')" title="Delete">
-                                    <span class="material-icons">delete</span>
-                                </button>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-                 {% if not files and not dirs and parent_dir is none %}
-                    <p>Directory is empty.</p>
-                {% endif %}
-            </div>
-
-            <div class="upload-section">
-                <h2>File Management</h2>
-                
-                <div class="mkdir-section">
-                    <form action="{{ url_for('create_directory', path=current_path) }}" method="post" class="mkdir-form">
-                        <div class="input-group">
-                            <span class="material-icons">create_new_folder</span>
-                            <input type="text" name="dir_name" placeholder="New directory name" required>
-                            <button type="submit" class="btn small-btn">Create</button>
+        <!-- Notification Flashes -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flashes-container">
+                    {% for category, message in messages %}
+                        <div class="flash-alert flash-{{ category }}">
+                            <span class="material-icons alert-icon">
+                                {% if category == 'success' %}check_circle{% else %}error_outline{% endif %}
+                            </span>
+                            <span class="flash-text">{{ message }}</span>
+                            <button type="button" class="alert-dismiss" onclick="this.parentElement.remove()">&times;</button>
                         </div>
-                    </form>
+                    {% endfor %}
                 </div>
+            {% endif %}
+        {% endwith %}
 
-                <h2>Upload</h2>
-
-                {% if recent_uploads is defined and recent_uploads %}
-                <div class="recent-uploads-top">
-                    <h3>Recent uploads</h3>
-                    <ul class="recent-uploads">
-                        {% for f in recent_uploads %}
-                            <li><span class="material-icons">insert_drive_file</span> {{ f }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                <form action="{{ url_for('upload_file', path=current_path) }}" method="post" enctype="multipart/form-data" id="upload-form">
-                    <label for="file-input" class="file-input-label" id="drop-area">
-                        <span class="material-icons">cloud_upload</span> Drag & Drop files here or Click to select
-                    </label>
-                    <input type="file" name="file" id="file-input" required>
-                    <button type="submit" class="btn">Upload</button>
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div class="progress-fill"></div>
-                        </div>
-                        <div class="progress-text"></div>
+        <!-- Unified File Explorer Card -->
+        <main class="explorer-container">
+            <div class="explorer-card" id="explorerCard">
+                <!-- Whole-Card Drag and Drop Overlay -->
+                <div class="drag-drop-overlay" id="dragDropOverlay">
+                    <div class="drag-drop-box">
+                        <span class="material-icons drag-icon">cloud_upload</span>
+                        <p class="drag-title">Drop files here to upload</p>
+                        <p class="drag-subtitle">Uploading to /{{ current_path }}</p>
                     </div>
-                </form>
+                </div>
 
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <ul class="flashes">
-                        {% for category, message in messages %}
-                            <li class="{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                        </ul>
+                <!-- Table Header -->
+                <div class="table-header">
+                    <div class="col-name">Name</div>
+                    <div class="col-type">Type</div>
+                    <div class="col-actions">Actions</div>
+                </div>
+
+                <!-- Table Rows -->
+                <div class="table-body" id="fileTableBody">
+                    {% if parent_dir is not none %}
+                    <div class="table-row parent-row">
+                        <div class="col-name">
+                            <a href="{{ url_for('browse', path=parent_dir) }}" class="item-link">
+                                <span class="material-icons item-icon dir-icon">folder_open</span>
+                                <span class="item-title">..</span>
+                            </a>
+                        </div>
+                        <div class="col-type"><span class="badge">Parent</span></div>
+                        <div class="col-actions"></div>
+                    </div>
                     {% endif %}
-                {% endwith %}
+
+                    {% for d in dirs %}
+                    <div class="table-row item-row" data-name="{{ d }}" data-type="dir">
+                        <div class="col-name">
+                            <a href="{{ url_for('browse', path=current_path + '/' + d if current_path else d) }}" class="item-link">
+                                <span class="material-icons item-icon dir-icon">folder</span>
+                                <span class="item-title">{{ d }}</span>
+                            </a>
+                        </div>
+                        <div class="col-type"><span class="badge badge-dir">Directory</span></div>
+                        <div class="col-actions">
+                            <button type="button" class="action-btn" onclick="showRenameDialog('{{ current_path + '/' + d if current_path else d }}', 'directory', '{{ d }}')" title="Rename folder">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button type="button" class="action-btn action-danger" onclick="confirmDelete('{{ current_path + '/' + d if current_path else d }}', 'directory', '{{ d }}')" title="Delete folder">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% for f in files %}
+                    <div class="table-row item-row" data-name="{{ f }}" data-type="file">
+                        <div class="col-name">
+                            <div class="file-name-group">
+                                <span class="material-icons item-icon file-icon">insert_drive_file</span>
+                                <a href="{{ url_for('download', filename=current_path + '/' + f if current_path else f) }}" class="item-link" title="{{ f }}">
+                                    <span class="item-title">{{ f }}</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-type"><span class="badge badge-file">File</span></div>
+                        <div class="col-actions">
+                            {% if f|file_previewable %}
+                            <a href="{{ url_for('preview_file', filename=current_path + '/' + f if current_path else f) }}" class="action-btn" title="Preview file">
+                                <span class="material-icons">visibility</span>
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('download', filename=current_path + '/' + f if current_path else f) }}" class="action-btn" title="Download file">
+                                <span class="material-icons">download</span>
+                            </a>
+                            <button type="button" class="action-btn" onclick="showRenameDialog('{{ current_path + '/' + f if current_path else f }}', 'file', '{{ f }}')" title="Rename file">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button type="button" class="action-btn action-danger" onclick="confirmDelete('{{ current_path + '/' + f if current_path else f }}', 'file', '{{ f }}')" title="Delete file">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if not files and not dirs and parent_dir is none %}
+                    <div class="empty-state">
+                        <span class="material-icons empty-icon">folder_open</span>
+                        <p class="empty-title">Directory is empty</p>
+                        <p class="empty-subtitle">Drag and drop files here or click Upload to get started</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </main>
-        
-        <footer>
-            <p>Powered by <a href="https://github.com/muadzhdz/fluxload" target="_blank">muadzhdz</a></p>
+
+        <footer class="app-footer">
+            <span>FluxLoad file server</span>
+            <span class="footer-sep">&bull;</span>
+            <span>Minimalist edition</span>
         </footer>
     </div>
 
-    <!-- Modal for rename dialog -->
-    <div id="renameModal" class="modal">
-        <div class="modal-content">
+    <!-- Floating Upload Progress Toast -->
+    <div id="uploadToast" class="upload-toast" style="display: none;">
+        <div class="toast-header">
+            <div class="toast-title-group">
+                <span class="material-icons toast-spin">sync</span>
+                <span id="toastFilename" class="toast-name">Uploading...</span>
+            </div>
+            <button type="button" id="toastCancelBtn" class="toast-close" title="Cancel upload">&times;</button>
+        </div>
+        <div class="toast-progress-track">
+            <div id="toastProgressBar" class="toast-progress-bar"></div>
+        </div>
+        <div class="toast-meta">
+            <span id="toastPercent" class="toast-percent">0%</span>
+            <span id="toastDetails" class="toast-details"></span>
+        </div>
+    </div>
+
+    <!-- Create Folder Modal -->
+    <div id="mkdirModal" class="modal" style="display: none;">
+        <div class="modal-card">
             <div class="modal-header">
-                <h3>Rename</h3>
-                <button class="modal-close" onclick="closeRenameModal()">&times;</button>
+                <h3>Create New Folder</h3>
+                <button type="button" class="modal-close" onclick="closeMkdirModal()">&times;</button>
+            </div>
+            <form action="{{ url_for('create_directory', path=current_path) }}" method="post">
+                <div class="modal-body">
+                    <label for="dirNameInput" class="form-label">Folder Name</label>
+                    <input type="text" id="dirNameInput" name="dir_name" class="form-input" placeholder="e.g. documents" required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeMkdirModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="renameModal" class="modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="renameTitle">Rename</h3>
+                <button type="button" class="modal-close" onclick="closeRenameModal()">&times;</button>
             </div>
             <form id="renameForm" method="post">
-                <div class="input-group">
+                <div class="modal-body">
                     <input type="hidden" id="renamePath" name="filename">
-                    <input type="text" id="newName" name="new_name" placeholder="New name" required>
+                    <label for="newNameInput" class="form-label">New Name</label>
+                    <input type="text" id="newNameInput" name="new_name" class="form-input" required autocomplete="off">
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn secondary" onclick="closeRenameModal()">Cancel</button>
-                    <button type="submit" class="btn">Rename</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeRenameModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Rename</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal for delete confirmation -->
-    <div id="deleteModal" class="modal">
-        <div class="modal-content">
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" style="display: none;">
+        <div class="modal-card">
             <div class="modal-header">
                 <h3>Confirm Delete</h3>
-                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
             </div>
-            <p>Are you sure you want to delete "<span id="deleteItemName"></span>"?</p>
             <form id="deleteForm" method="post">
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong id="deleteItemName"></strong>?</p>
+                    <p class="modal-warning">This action cannot be undone.</p>
+                </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn secondary" onclick="closeDeleteModal()">Cancel</button>
-                    <button type="submit" class="btn delete-btn">Delete</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
-        function showRenameDialog(path, type) {
-            document.getElementById('renamePath').value = path;
-            document.getElementById('newName').value = path.split('/').pop();
-            document.getElementById('renameForm').action = '/rename/' + path;
-            document.getElementById('renameModal').style.display = 'flex';
-        }
-
-        function closeRenameModal() {
-            document.getElementById('renameModal').style.display = 'none';
-        }
-
-        function confirmDelete(path, type) {
-            document.getElementById('deleteItemName').textContent = path.split('/').pop();
-            document.getElementById('deleteForm').action = '/delete/' + path;
-            document.getElementById('deleteModal').style.display = 'flex';
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').style.display = 'none';
-        }
-
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            const renameModal = document.getElementById('renameModal');
-            const deleteModal = document.getElementById('deleteModal');
-            if (event.target == renameModal) {
-                closeRenameModal();
-            }
-            if (event.target == deleteModal) {
-                closeDeleteModal();
-            }
-        }
+        const UPLOAD_URL = "{{ url_for('upload_file', path=current_path) }}";
+        const CURRENT_PATH = "{{ current_path }}";
     </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

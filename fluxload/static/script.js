@@ -1,290 +1,261 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
-    const themeSelect = document.getElementById('theme-select');
- 
-    const initialTheme = document.documentElement.getAttribute('data-theme') || 'tokyo-night';
+    // ===== THEME MANAGEMENT =====
+    const themeSelect = document.getElementById('themeSelect');
+    const storedTheme = localStorage.getItem('selectedTheme') || document.documentElement.getAttribute('data-theme') || 'tokyo-night';
 
- 
-    const updateColorPaletteDisplay = () => {
-        const colorPaletteDisplay = document.getElementById('color-palette-display');
-        if (!colorPaletteDisplay) return;
+    if (themeSelect) {
+        themeSelect.value = storedTheme;
+        themeSelect.addEventListener('change', (e) => {
+            const chosen = e.target.value;
+            document.documentElement.setAttribute('data-theme', chosen);
+            localStorage.setItem('selectedTheme', chosen);
+            document.cookie = `theme=${chosen}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+        });
+    }
 
-     
-        colorPaletteDisplay.innerHTML = '';
+    // ===== CLIENT-SIDE INSTANT SEARCH FILTER =====
+    const fileSearch = document.getElementById('fileSearch');
+    const itemRows = document.querySelectorAll('.item-row');
 
-        const rootStyles = getComputedStyle(document.documentElement);
-        const colors = ['--primary', '--secondary', '--accent', '--bg', '--fg', '--surface'];
+    if (fileSearch) {
+        fileSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            itemRows.forEach(row => {
+                const name = (row.getAttribute('data-name') || '').toLowerCase();
+                row.style.display = name.includes(query) ? '' : 'none';
+            });
+        });
 
-        colors.forEach(colorVar => {
-            const colorValue = rootStyles.getPropertyValue(colorVar).trim();
-            if (colorValue) {
-                const swatch = document.createElement('div');
-                swatch.className = 'color-swatch';
-                swatch.style.backgroundColor = colorValue;
-                swatch.title = `${colorVar}: ${colorValue}`;
-                colorPaletteDisplay.appendChild(swatch);
+        // Clear search on Escape
+        fileSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                fileSearch.value = '';
+                fileSearch.dispatchEvent(new Event('input'));
+                fileSearch.blur();
             }
         });
-    };
-
-
-    const themeDisplay = document.getElementById('theme-display');
-    const themePrev = document.getElementById('theme-prev');
-    const themeNext = document.getElementById('theme-next');
-    const themes = [
-        {value: 'tokyo-night', label: 'Tokyo Night'},
-        {value: 'rose-pine', label: 'Rosé Pine'},
-        {value: 'catppuccin-mocha', label: 'Catppuccin Mocha'},
-        {value: 'catppuccin-macchiato', label: 'Catppuccin Macchiato'},
-        {value: 'catppuccin-frappe', label: 'Catppuccin Frappe'},
-        {value: 'catppuccin-latte', label: 'Catppuccin Latte'},
-        {value: 'nord', label: 'Nord'},
-        {value: 'gruvbox-dark', label: 'Gruvbox Dark'},
-        {value: 'gruvbox-light', label: 'Gruvbox Light'},
-        {value: 'dracula', label: 'Dracula'},
-        {value: 'monokai-pro', label: 'Monokai Pro'},
-        {value: 'solarized-light', label: 'Solarized Light'},
-        {value: 'solarized-dark', label: 'Solarized Dark'},
-        {value: 'one-dark-pro', label: 'One Dark Pro'},
-        {value: 'ayu-dark', label: 'Ayu Dark'}
-    ];
-
- 
-    const stored = localStorage.getItem('selectedTheme') || document.documentElement.getAttribute('data-theme') || 'tokyo-night';
-    let currentIndex = themes.findIndex(t => t.value === stored);
-    if (currentIndex === -1) currentIndex = 0;
-
-
-    function animateThemeChange(newLabel, direction) {
-        if (!themeDisplay) return;
-
-        const incoming = document.createElement('span');
-        incoming.className = 'theme-label incoming';
-        incoming.textContent = newLabel;
-
-        if (direction === 'next') {
-            incoming.classList.add('enter-from-right');
-        } else {
-            incoming.classList.add('enter-from-left');
-        }
-
-        themeDisplay.appendChild(incoming);
-
-
-        void incoming.offsetWidth;
-
-
-        incoming.classList.add('enter-to');
-        
-        const outgoing = themeDisplay.querySelector('.theme-label:not(.incoming)');
-        if (outgoing) {
-            if (direction === 'next') {
-                outgoing.classList.add('exit-to-left');
-            } else {
-                outgoing.classList.add('exit-to-right');
-            }
-            outgoing.addEventListener('transitionend', () => {
-                outgoing.remove();
-            }, { once: true });
-        }
-
-        incoming.addEventListener('transitionend', () => {
-            incoming.classList.remove('incoming', 'enter-from-right', 'enter-from-left', 'enter-to');
-            incoming.classList.add('theme-label');
-        }, { once: true });
     }
 
-    function applyTheme(index, direction = 'next') {
-        const theme = themes[index];
-        document.documentElement.setAttribute('data-theme', theme.value);
-        localStorage.setItem('selectedTheme', theme.value);
-        document.cookie = `theme=${theme.value}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
-        updateColorPaletteDisplay();
-        animateThemeChange(theme.label, direction);
-    }
+    // ===== WHOLE-PAGE DRAG AND DROP UPLOAD =====
+    const dropOverlay = document.getElementById('dragDropOverlay');
+    const fileInput = document.getElementById('fileInput');
+    let dragCounter = 0;
 
-    function addPressHandlers(btn) {
-        if (!btn) return;
-        const add = () => btn.classList.add('pressed');
-        const remove = () => btn.classList.remove('pressed');
-        btn.addEventListener('mousedown', add);
-        btn.addEventListener('mouseup', remove);
-        btn.addEventListener('mouseleave', remove);
-        btn.addEventListener('touchstart', add, { passive: true });
-        btn.addEventListener('touchend', remove);
-        btn.addEventListener('touchcancel', remove);
-    }
-
-    if (themeDisplay) {
-        const initLabel = document.createElement('span');
-        initLabel.className = 'theme-label';
-        initLabel.textContent = themes[currentIndex].label;
-        themeDisplay.appendChild(initLabel);
-    }
-
-    if (themePrev && themeNext && themeDisplay) {
-        addPressHandlers(themePrev);
-        addPressHandlers(themeNext);
-
-        themePrev.addEventListener('click', () => {
-            currentIndex = (currentIndex - 1 + themes.length) % themes.length;
-            applyTheme(currentIndex, 'prev');
-        });
-        themeNext.addEventListener('click', () => {
-            currentIndex = (currentIndex + 1) % themes.length;
-            applyTheme(currentIndex, 'next');
-        });
-
-        themeDisplay.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') {
-                themePrev.click();
-            } else if (e.key === 'ArrowRight') {
-                themeNext.click();
-            }
-        });
-
-        document.documentElement.setAttribute('data-theme', themes[currentIndex].value);
-        localStorage.setItem('selectedTheme', themes[currentIndex].value);
-        document.cookie = `theme=${themes[currentIndex].value}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
-        updateColorPaletteDisplay();
-    }
-
-    document.querySelectorAll('.flashes .success').forEach(el => {
-        setTimeout(() => {
-            el.classList.add('fade-out');
-            el.addEventListener('transitionend', () => el.remove(), { once: true });
-        }, 3500);
+    window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (dropOverlay) dropOverlay.classList.add('active');
     });
 
-    const fileInput = document.getElementById('file-input');
-    const fileInputLabel = document.querySelector('.file-input-label');
-    const dropArea = document.getElementById('drop-area');
-    const uploadForm = document.getElementById('upload-form');
+    window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0 && dropOverlay) {
+            dragCounter = 0;
+            dropOverlay.classList.remove('active');
+        }
+    });
 
-    if (fileInput && fileInputLabel && dropArea && uploadForm) {
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        if (dropOverlay) dropOverlay.classList.remove('active');
+
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            uploadFilesBatch(e.dataTransfer.files);
+        }
+    });
+
+    if (fileInput) {
         fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                fileInputLabel.innerHTML = `<span class="material-icons">cloud_upload</span> ${fileInput.files[0].name}`;
-            } else {
-                fileInputLabel.innerHTML = `<span class="material-icons">cloud_upload</span> Drag & Drop files here or Click to select`;
+            if (fileInput.files && fileInput.files.length > 0) {
+                uploadFilesBatch(fileInput.files);
             }
         });
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false); 
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight'), false);
-        });
-
-        dropArea.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files.length > 0) {
-                fileInput.files = files;
-                fileInputLabel.innerHTML = `<span class="material-icons">cloud_upload</span> ${files[0].name}`;
-
-            }
-        }
     }
 
-    updateColorPaletteDisplay();
+    // ===== UPLOAD PROGRESS TOAST & EXECUTION =====
+    const uploadToast = document.getElementById('uploadToast');
+    const toastFilename = document.getElementById('toastFilename');
+    const toastProgressBar = document.getElementById('toastProgressBar');
+    const toastPercent = document.getElementById('toastPercent');
+    const toastDetails = document.getElementById('toastDetails');
+    const toastCancelBtn = document.getElementById('toastCancelBtn');
 
-    // Upload progress handling
-    const progressContainer = document.querySelector('.progress-container');
-    const progressBar = document.querySelector('.progress-fill');
-    const progressText = document.querySelector('.progress-text');
+    let currentXhr = null;
 
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const fileInput = document.getElementById('file-input');
-            if (!fileInput.files.length) {
-                return;
+    if (toastCancelBtn) {
+        toastCancelBtn.addEventListener('click', () => {
+            if (currentXhr) {
+                currentXhr.abort();
+                currentXhr = null;
             }
+            if (uploadToast) uploadToast.style.display = 'none';
+        });
+    }
 
-            const formData = new FormData(uploadForm);
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    async function uploadFilesBatch(files) {
+        if (!files || files.length === 0) return;
+        const total = files.length;
+
+        for (let i = 0; i < total; i++) {
+            await uploadSingleFile(files[i], i + 1, total);
+        }
+
+        // All uploads complete, reload to show new files
+        setTimeout(() => {
+            window.location.reload();
+        }, 600);
+    }
+
+    function uploadSingleFile(file, index, total) {
+        return new Promise((resolve) => {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const uploadUrl = typeof UPLOAD_URL !== 'undefined' ? UPLOAD_URL : window.location.pathname;
+
             const xhr = new XMLHttpRequest();
+            currentXhr = xhr;
 
-            // Show progress container
-            if (progressContainer) {
-                progressContainer.style.display = 'block';
+            if (uploadToast) {
+                uploadToast.style.display = 'flex';
+                if (toastFilename) {
+                    toastFilename.textContent = `[${index}/${total}] ${file.name}`;
+                }
+                if (toastProgressBar) toastProgressBar.style.width = '0%';
+                if (toastPercent) toastPercent.textContent = '0%';
+                if (toastDetails) toastDetails.textContent = `0 / ${formatBytes(file.size)}`;
             }
 
-            // Upload progress
-            xhr.upload.addEventListener('progress', function(e) {
+            xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    if (progressBar) {
-                        progressBar.style.width = percentComplete + '%';
-                    }
-                    if (progressText) {
-                        progressText.textContent = `Uploading: ${Math.round(percentComplete)}%`;
-                    }
-                }
-            });
-
-            // Upload complete
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    if (progressBar) {
-                        progressBar.style.width = '100%';
-                    }
-                    if (progressText) {
-                        progressText.textContent = 'Upload complete!';
-                    }
-                    
-                    // Reset form after a short delay
-                    setTimeout(() => {
-                        uploadForm.reset();
-                        if (fileInputLabel) {
-                            fileInputLabel.innerHTML = `<span class="material-icons">cloud_upload</span> Drag & Drop files here or Click to select`;
-                        }
-                        if (progressContainer) {
-                            progressContainer.style.display = 'none';
-                        }
-                        if (progressBar) {
-                            progressBar.style.width = '0%';
-                        }
-                        if (progressText) {
-                            progressText.textContent = '';
-                        }
-                        // Redirect to show flash messages
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    if (progressText) {
-                        progressText.textContent = 'Upload failed!';
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    if (toastProgressBar) toastProgressBar.style.width = pct + '%';
+                    if (toastPercent) toastPercent.textContent = pct + '%';
+                    if (toastDetails) {
+                        toastDetails.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
                     }
                 }
             });
 
-            // Upload error
-            xhr.addEventListener('error', function() {
-                if (progressText) {
-                    progressText.textContent = 'Upload error!';
-                }
+            xhr.addEventListener('load', () => {
+                currentXhr = null;
+                if (toastProgressBar) toastProgressBar.style.width = '100%';
+                if (toastPercent) toastPercent.textContent = '100%';
+                resolve();
             });
 
-            // Send the request
-            xhr.open('POST', uploadForm.action);
+            xhr.addEventListener('error', () => {
+                currentXhr = null;
+                if (toastFilename) toastFilename.textContent = `Error uploading ${file.name}`;
+                resolve();
+            });
+
+            xhr.addEventListener('abort', () => {
+                currentXhr = null;
+                resolve();
+            });
+
+            xhr.open('POST', uploadUrl, true);
             xhr.send(formData);
         });
     }
 
+    // Auto-dismiss flashes after 4 seconds
+    document.querySelectorAll('.flash-alert').forEach(el => {
+        setTimeout(() => {
+            el.style.transition = 'opacity 0.4s, transform 0.4s';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-10px)';
+            setTimeout(() => el.remove(), 400);
+        }, 4000);
+    });
+});
+
+// ===== MODAL CONTROLS (GLOBAL SCOPE) =====
+function openMkdirModal() {
+    const modal = document.getElementById('mkdirModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        const input = document.getElementById('dirNameInput');
+        if (input) input.focus();
+    }
+}
+
+function closeMkdirModal() {
+    const modal = document.getElementById('mkdirModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showRenameDialog(path, type, name) {
+    const modal = document.getElementById('renameModal');
+    if (!modal) return;
+    const renamePath = document.getElementById('renamePath');
+    const newNameInput = document.getElementById('newNameInput');
+    const renameForm = document.getElementById('renameForm');
+    const renameTitle = document.getElementById('renameTitle');
+
+    if (renamePath) renamePath.value = path;
+    if (newNameInput) {
+        newNameInput.value = name || path.split('/').pop();
+        newNameInput.focus();
+    }
+    if (renameForm) renameForm.action = '/rename/' + path;
+    if (renameTitle) renameTitle.textContent = `Rename ${type === 'directory' ? 'Folder' : 'File'}`;
+
+    modal.style.display = 'flex';
+}
+
+function closeRenameModal() {
+    const modal = document.getElementById('renameModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function confirmDelete(path, type, name) {
+    const modal = document.getElementById('deleteModal');
+    if (!modal) return;
+    const deleteItemName = document.getElementById('deleteItemName');
+    const deleteForm = document.getElementById('deleteForm');
+
+    if (deleteItemName) deleteItemName.textContent = name || path.split('/').pop();
+    if (deleteForm) deleteForm.action = '/delete/' + path;
+
+    modal.style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Global window click to close modals when clicking on backdrop
+window.addEventListener('click', (event) => {
+    ['mkdirModal', 'renameModal', 'deleteModal'].forEach(id => {
+        const modal = document.getElementById(id);
+        if (modal && event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+
+// Global Escape key listener to close modals
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeMkdirModal();
+        closeRenameModal();
+        closeDeleteModal();
+    }
 });
