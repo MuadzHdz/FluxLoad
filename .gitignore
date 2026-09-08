@@ -49,3 +49,5 @@ mvnw*
 # Other
 .DS_Store
 search_index/
+.coverage
+.ai-engineering-loop/

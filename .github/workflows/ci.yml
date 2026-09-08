@@ -1,4 +1,4 @@
-name: Java CI
+name: FluxLoad Java CI/CD
 
 on:
   push:
@@ -6,10 +6,52 @@ on:
   pull_request:
     branches: [ java, main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  lint-and-compliance:
+    name: Code Quality & Zero-Emoji Compliance
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python for Compliance Check
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Verify Zero-Emoji Compliance
+      run: |
+        python3 -c "
+        import os, sys, re
+        emoji_pattern = re.compile(r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50]')
+        violations = 0
+        for root, dirs, files in os.walk('.'):
+            if '.git' in dirs: dirs.remove('.git')
+            if 'target' in dirs: dirs.remove('target')
+            for f in files:
+                if f.endswith(('.java', '.properties', '.xml', '.html', '.js', '.css', '.md', '.json', '.yml', '.yaml')):
+                    p = os.path.join(root, f)
+                    with open(p, 'r', errors='ignore') as fh:
+                        for idx, line in enumerate(fh, 1):
+                            m = emoji_pattern.search(line)
+                            if m:
+                                print(f'Zero-Emoji violation at {p}:{idx} -> {m.group()}')
+                                violations += 1
+        if violations > 0:
+            print(f'ERROR: Found {violations} emoji violations. Zero-Emoji policy strictly enforced.')
+            sys.exit(1)
+        print('Zero-Emoji compliance verified: 0 violations found.')
+        "
+
+  test-and-build:
+    name: Maven Test & Package (JDK ${{ matrix.java-version }})
+    needs: lint-and-compliance
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         java-version: [ '17', '21' ]
 
@@ -23,8 +65,34 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
 
-    - name: Run test suite with Maven
+    - name: Run JUnit test suite with Maven
       run: mvn -B test
 
-    - name: Build JAR package
+    - name: Package Executable JAR
       run: mvn -B package -DskipTests
+
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      if: matrix.java-version == '17'
+      with:
+        name: fluxload-jar
+        path: target/*.jar
+
+  docker-smoke-test:
+    name: Docker Multi-Stage Build & Health Smoke Test
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t fluxload:java-ci .
+
+    - name: Run container & verify /health endpoint
+      run: |
+        mkdir -p /tmp/fluxload-java-data
+        docker run -d --name fluxload-java-test -p 8080:8080 -v /tmp/fluxload-java-data:/data fluxload:java-ci
+        sleep 4
+        curl --fail --retry 5 --retry-connrefused --retry-delay 2 http://localhost:8080/health || exit 1
+        docker stop fluxload-java-test
+        docker rm fluxload-java-test
